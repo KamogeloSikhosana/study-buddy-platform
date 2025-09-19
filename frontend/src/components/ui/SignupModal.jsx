@@ -1,5 +1,5 @@
 import { Dialog } from "@headlessui/react";
-import { useEffect, useState } from "react"; // <-- add useEffect
+import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 
@@ -7,16 +7,14 @@ export default function SignupModal({ open, onClose, goLogin }) {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [studentNumber, setStudentNumber] = useState("");
   const [name, setName] = useState("");
   const [surname, setSurname] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");           // <-- NEW
+  const [error, setError] = useState("");
 
   const resetForm = () => {
-    setStudentNumber("");
     setName("");
     setSurname("");
     setEmail("");
@@ -36,19 +34,17 @@ export default function SignupModal({ open, onClose, goLogin }) {
 
   const handleSignup = (e) => {
     e.preventDefault();
-
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");          // <-- inline error instead of alert
+      setError("Passwords do not match.");
       return;
     }
 
     // TODO: Replace with API call
     login({ id: 1, name: `${name} ${surname}`, role: "student" });
-    navigate("/", { replace: true });               // students land on "/"
-    handleClose();                                  // clears + closes
+    navigate("/", { replace: true });
+    handleClose();
   };
 
-  // Clear error as user types
   const clearOnChange = (setter) => (e) => {
     setter(e.target.value);
     if (error) setError("");
@@ -63,7 +59,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
           {/* Close */}
           <button
             onClick={handleClose}
-            className="absolute top-3 right-3 text-dark/60 hover:text-mediumpur transition text-2xl leading-none cursor-pointer"
+            className="absolute top-3 right-3 text-dark/60 hover:text-blue-600 transition text-2xl leading-none cursor-pointer"
             aria-label="Close"
           >
             ×
@@ -71,12 +67,13 @@ export default function SignupModal({ open, onClose, goLogin }) {
 
           {/* Logo */}
           <div className="flex justify-center mb-3">
-            <img src="/src/assets/logo.png" alt="PukkeConnect Logo" className="h-30 w-auto" />
+            <img src="/src/assets/logo.png" alt="Study Buddy Logo" className="h-30 w-auto" />
           </div>
 
-          {/* Title */}
-          
-          <p className="text-1xl font-semibold text-center text-dark">Join PukkeConnect today and find your perferct society match!</p>
+          {/* Top Text */}
+          <p className="text-1xl font-semibold text-center text-dark">
+            Join Study Buddy today and find your ideal study partners!
+          </p>
 
           {/* Inline error */}
           {error && (
@@ -86,28 +83,9 @@ export default function SignupModal({ open, onClose, goLogin }) {
           )}
 
           <form onSubmit={handleSignup} className="space-y-3">
-            {/* University Number */}
-            <div className="relative">
-              <label className="block text-sm font-medium text-dark">University Number</label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 9h3.75M15 12h3.75M15 15h3.75M4.5 19.5h15a2.25 2.25 0 0 0 2.25-2.25V6.75A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25v10.5A2.25 2.25 0 0 0 4.5 19.5Zm6-10.125a1.875 1.875 0 1 1-3.75 0 1.875 1.875 0 0 1 3.75 0Zm1.294 6.336a6.721 6.721 0 0 1-3.17.789 6.721 6.721 0 0 1-3.168-.789 3.376 3.376 0 0 1 6.338 0Z" />
-                  </svg>
-                </span>
-                <input
-                  type="text"
-                  value={studentNumber}
-                  onChange={clearOnChange(setStudentNumber)}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
-                  placeholder="Enter university number"
-                  required
-                />
-              </div>
-            </div>
-
             {/* Name & Surname */}
             <div className="grid grid-cols-2 gap-2">
+              {/* Name */}
               <div className="relative">
                 <label className="block text-sm font-medium text-dark">Name</label>
                 <div className="mt-1 relative">
@@ -120,13 +98,14 @@ export default function SignupModal({ open, onClose, goLogin }) {
                     type="text"
                     value={name}
                     onChange={clearOnChange(setName)}
-                    className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
+                    className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     placeholder="Enter name"
                     required
                   />
                 </div>
               </div>
 
+              {/* Surname */}
               <div className="relative">
                 <label className="block text-sm font-medium text-dark">Surname</label>
                 <div className="mt-1 relative">
@@ -139,7 +118,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
                     type="text"
                     value={surname}
                     onChange={clearOnChange(setSurname)}
-                    className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
+                    className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                     placeholder="Enter surname"
                     required
                   />
@@ -160,7 +139,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
                   type="email"
                   value={email}
                   onChange={clearOnChange(setEmail)}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
+                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   placeholder="Enter email"
                   required
                   autoComplete="email"
@@ -181,14 +160,13 @@ export default function SignupModal({ open, onClose, goLogin }) {
                   type="password"
                   value={password}
                   onChange={clearOnChange(setPassword)}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
+                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   placeholder="Enter password"
                   required
                   autoComplete="new-password"
                 />
               </div>
             </div>
-
 
             {/* Confirm Password */}
             <div className="relative">
@@ -203,7 +181,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
                   type="password"
                   value={confirmPassword}
                   onChange={clearOnChange(setConfirmPassword)}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-mediumpur focus:outline-none"
+                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
                   placeholder="Confirm password"
                   required
                   autoComplete="new-password"
@@ -211,10 +189,10 @@ export default function SignupModal({ open, onClose, goLogin }) {
               </div>
             </div>
 
-
+            {/* Submit Button */}
             <button
               type="submit"
-              className="w-full rounded-lg bg-gradient-to-r from-mediumpur to-softlav py-2 text-white font-semibold shadow hover:opacity-90 transition"
+              className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-400 py-2 text-white font-semibold shadow hover:opacity-90 transition"
             >
               Sign Up
             </button>
@@ -224,8 +202,11 @@ export default function SignupModal({ open, onClose, goLogin }) {
             Already have an account?{" "}
             <button
               type="button"
-              onClick={() => { resetForm(); goLogin?.(); }}
-              className="font-semibold text-mediumpur hover:underline cursor-pointer"
+              onClick={() => {
+                resetForm();
+                goLogin?.();
+              }}
+              className="font-semibold text-blue-600 hover:underline cursor-pointer"
             >
               Login
             </button>

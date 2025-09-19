@@ -12,7 +12,7 @@ export default function Footer() {
         <div>
           <div className="flex items-center gap-3 mb-4">
             <img
-              src="/icon.png"
+              src="/src/assets/logo.png"
               alt="Pukke Connect Logo"
               className="h-12 w-12 rounded-full ring-2 ring-gray-300/50"
             />
@@ -21,7 +21,7 @@ export default function Footer() {
             </span>
           </div>
           <p className="text-sm text-gray-600 mb-4">
-            Connecting North-West University students with their perfect society matches through intelligent technology and community building.
+            Connecting students across South Africa to the perfect study partners and groups through smart tools and collaborative learning.
           </p>
           <ul className="space-y-2 text-sm text-gray-600">
             <li className="flex items-center gap-2">
@@ -75,7 +75,7 @@ export default function Footer() {
 
       {/* Bottom Bar */}
       <div className="border-t border-gray-300/30 mt-6 py-4 text-center text-xs text-gray-600">
-        © {new Date().getFullYear()} Pukke Connect · Built for North-West University students.
+        © {new Date().getFullYear()} Study Buddy · Built for students in South African Universities.
       </div>
     </footer>
   );

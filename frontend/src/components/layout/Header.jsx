@@ -67,8 +67,8 @@ export default function Header() {
           {/* === Logo ==== */}
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/src/assets/"
-              alt="PukkeConnect"
+              src="/src/assets/logo.png"
+              alt="Study Buddy"
               className="h-14 w-14 rounded-full ring-1 ring-muted/40"
             />
           </Link>
