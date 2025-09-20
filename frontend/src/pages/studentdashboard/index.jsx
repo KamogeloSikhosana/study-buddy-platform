@@ -53,7 +53,7 @@ function Sidebar({ page, setPage, onLogout }) {
       >
         {/* Logo */}
         <div className="mb-8 px-2 flex items-center">
-          <img src="/src/assets/logo.png" alt="StudyBuddy logo" className="h-10 w-auto" />
+          <img src="/src/assets/logo.png" alt="StudyBuddy logo" className="h-40 w-auto" />
         </div>
 
         {/* Navigation */}
@@ -383,45 +383,93 @@ const initialGroups = [
   {
     id: 1,
     name: "Calculus Study Group",
-    course: "Mathematics",
     module: "Calculus 101",
-    university: "NWU",
-    members: ["Student Name", "Alice", "Bob"],
+    about: "Weekly study sessions for Calculus 101. All welcome!",
     owner: "Student Name",
+    maxParticipants: 8,
+    meetingLink: "https://teams.microsoft.com/l/meetup-join/group1",
+    meetingPlatform: "Microsoft Teams",
+    members: ["Student Name", "Alice", "Bob"],
+    sessions: [
+      { id: 1, date: "2023-10-15", time: "14:00", topic: "Limits and Continuity" },
+      { id: 2, date: "2023-10-22", time: "14:00", topic: "Derivatives" }
+    ]
   },
   {
     id: 2,
     name: "Physics Pals",
-    course: "Physics",
     module: "Mechanics",
-    university: "UCT",
-    members: ["Charlie"],
+    about: "Study group for Physics Mechanics module",
     owner: "Other Student",
+    maxParticipants: 6,
+    meetingLink: "https://zoom.us/j/group2",
+    meetingPlatform: "Zoom",
+    members: ["Charlie"],
+    sessions: []
   },
+  {
+    id: 3,
+    name: "Biology Buddies",
+    module: "Cell Biology",
+    about: "Exploring the wonders of cell biology together",
+    owner: "David",
+    maxParticipants: 10,
+    meetingLink: "https://meet.google.com/group3",
+    meetingPlatform: "Google Meet",
+    members: ["Student Name", "David", "Eva"],
+    sessions: [
+      { id: 3, date: "2023-10-18", time: "16:00", topic: "Cell Structures" }
+    ]
+  }
 ];
 
 function StudyCirclePage() {
   const [groups, setGroups] = useState(initialGroups);
   const [search, setSearch] = useState("");
+  const [filters, setFilters] = useState({
+    joinedOnly: false,
+    ownedOnly: false,
+    withSlots: false
+  });
   const [newGroup, setNewGroup] = useState({
     name: "",
-    course: "",
     module: "",
-    university: "",
+    about: "",
+    maxParticipants: 8,
+    meetingLink: "",
+    meetingPlatform: "Microsoft Teams"
   });
+  const [newSession, setNewSession] = useState({ date: "", time: "", topic: "" });
   const [currentUser] = useState("Student Name");
+  const [activeTab, setActiveTab] = useState("browse");
+  const [selectedGroup, setSelectedGroup] = useState(null);
 
-  const filteredGroups = groups.filter((g) =>
-    [g.name, g.course, g.module, g.university].some((field) =>
+  // Filter groups based on search and filters
+  const filteredGroups = groups.filter((g) => {
+    // Search filter
+    const matchesSearch = [g.name, g.module, g.about].some((field) =>
       field.toLowerCase().includes(search.toLowerCase())
-    )
-  );
+    );
+    
+    // Additional filters
+    const matchesJoined = filters.joinedOnly ? g.members.includes(currentUser) : true;
+    const matchesOwned = filters.ownedOnly ? g.owner === currentUser : true;
+    const matchesSlots = filters.withSlots ? g.members.length < g.maxParticipants : true;
+    
+    return matchesSearch && matchesJoined && matchesOwned && matchesSlots;
+  });
 
+  // Toggle join/unjoin a group
   const toggleJoin = (groupId) => {
     setGroups((prev) =>
       prev.map((g) => {
         if (g.id === groupId) {
           const isMember = g.members.includes(currentUser);
+          // Check if group is full when joining
+          if (!isMember && g.members.length >= g.maxParticipants) {
+            alert("This group is already full.");
+            return g;
+          }
           return {
             ...g,
             members: isMember
@@ -434,105 +482,496 @@ function StudyCirclePage() {
     );
   };
 
+  // Create a new group
   const handleCreateGroup = () => {
-    if (!newGroup.name) return;
+    if (!newGroup.name || !newGroup.module) return;
     const newId = groups.length + 1;
     setGroups([
       ...groups,
-      { ...newGroup, id: newId, members: [currentUser], owner: currentUser },
+      { 
+        ...newGroup, 
+        id: newId, 
+        members: [currentUser], 
+        owner: currentUser,
+        sessions: []
+      },
     ]);
-    setNewGroup({ name: "", course: "", module: "", university: "" });
+    setNewGroup({ 
+      name: "", 
+      module: "", 
+      about: "", 
+      maxParticipants: 8,
+      meetingLink: "",
+      meetingPlatform: "Microsoft Teams"
+    });
+    setActiveTab("browse");
   };
 
-  const removeMember = (groupId, member) => {
+  // Add a session to a group
+  const addSession = (groupId) => {
+    if (!newSession.date || !newSession.topic) return;
+    
     setGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId
-          ? { ...g, members: g.members.filter((m) => m !== member) }
-          : g
-      )
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            sessions: [
+              ...g.sessions,
+              {
+                id: Date.now(),
+                ...newSession
+              }
+            ]
+          };
+        }
+        return g;
+      })
     );
+    
+    setNewSession({ date: "", time: "", topic: "" });
+  };
+
+  // Remove a session from a group
+  const removeSession = (groupId, sessionId) => {
+    setGroups((prev) =>
+      prev.map((g) => {
+        if (g.id === groupId) {
+          return {
+            ...g,
+            sessions: g.sessions.filter(s => s.id !== sessionId)
+          };
+        }
+        return g;
+      })
+    );
+  };
+
+  // View group details
+  const viewGroupDetails = (group) => {
+    setSelectedGroup(group);
+    setActiveTab("details");
+  };
+
+  // Copy meeting link to clipboard
+  const copyMeetingLink = (link) => {
+    navigator.clipboard.writeText(link);
+    alert("Meeting link copied to clipboard!");
   };
 
   return (
     <div className="p-6 space-y-6">
-      <Card title="Study Circles">
-        <input
-          type="text"
-          placeholder="Search by group, course, module, university..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full p-2 border rounded-lg mb-4"
-        />
-
-        {filteredGroups.length === 0 ? (
-          <p className="text-gray-500">No groups found.</p>
-        ) : (
-          filteredGroups.map((g) => (
-            <div
-              key={g.id}
-              className="p-4 mb-3 border rounded-lg flex justify-between items-center bg-white shadow-sm"
-            >
-              <div>
-                <h3 className="font-semibold">{g.name}</h3>
-                <p className="text-sm text-gray-500">
-                  {g.course} - {g.module} ({g.university})
-                </p>
-                <p className="text-xs text-gray-400">Members: {g.members.join(", ")}</p>
-              </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={() => toggleJoin(g.id)}
-                  className={`px-4 py-1 rounded-lg text-white text-sm ${
-                    g.members.includes(currentUser)
-                      ? "bg-gray-400 hover:bg-gray-500"
-                      : "bg-blue-500 hover:bg-blue-600"
-                  }`}
-                >
-                  {g.members.includes(currentUser) ? "Unjoin" : "Join"}
-                </button>
-
-                {g.owner === currentUser && g.members.length > 1 && (
-                  <button
-                    onClick={() =>
-                      removeMember(
-                        g.id,
-                        g.members.find((m) => m !== currentUser)
-                      )
-                    }
-                    className="px-4 py-1 rounded-lg text-white bg-red-500 hover:bg-red-600 text-sm"
-                  >
-                    Remove Member
-                  </button>
-                )}
-              </div>
-            </div>
-          ))
-        )}
-      </Card>
-
-      <Card title="Create New Study Group">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {["name", "course", "module", "university"].map((field) => (
-            <input
-              key={field}
-              type="text"
-              placeholder={field.charAt(0).toUpperCase() + field.slice(1)}
-              value={newGroup[field]}
-              onChange={(e) =>
-                setNewGroup({ ...newGroup, [field]: e.target.value })
-              }
-              className="w-full p-2 border rounded-lg"
-            />
-          ))}
-        </div>
+      {/* Tabs Navigation */}
+      <div className="flex border-b">
         <button
-          onClick={handleCreateGroup}
-          className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          onClick={() => setActiveTab("browse")}
+          className={`px-4 py-2 text-sm font-medium ${
+            activeTab === "browse"
+              ? "border-b-2 border-blue-500 text-blue-600"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
+        >
+          Browse Groups
+        </button>
+        <button
+          onClick={() => setActiveTab("create")}
+          className={`px-4 py-2 text-sm font-medium ${
+            activeTab === "create"
+              ? "border-b-2 border-blue-500 text-blue-600"
+              : "text-gray-500 hover:text-gray-700"
+          }`}
         >
           Create Group
         </button>
-      </Card>
+        {activeTab === "details" && selectedGroup && (
+          <button
+            className="px-4 py-2 text-sm font-medium border-b-2 border-blue-500 text-blue-600"
+          >
+            {selectedGroup.name}
+          </button>
+        )}
+      </div>
+
+      {/* Browse Groups Tab */}
+      {activeTab === "browse" && (
+        <>
+          <Card title="Study Circles" subtitle="Find or manage your study groups">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+              <input
+                type="text"
+                placeholder="Search by group name, module, or description..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="md:col-span-3 p-2 border rounded-lg"
+              />
+              
+              <div className="relative group">
+                <button className="w-full p-2 border rounded-lg bg-gray-100 hover:bg-gray-200">
+                  Filters ▾
+                </button>
+                <div className="absolute right-0 mt-1 w-48 bg-white rounded-md shadow-lg py-1 z-10 hidden group-hover:block">
+                  <label className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={filters.joinedOnly}
+                      onChange={(e) => setFilters({...filters, joinedOnly: e.target.checked})}
+                      className="mr-2"
+                    />
+                    Joined Groups Only
+                  </label>
+                  <label className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={filters.ownedOnly}
+                      onChange={(e) => setFilters({...filters, ownedOnly: e.target.checked})}
+                      className="mr-2"
+                    />
+                    My Groups Only
+                  </label>
+                  <label className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                    <input
+                      type="checkbox"
+                      checked={filters.withSlots}
+                      onChange={(e) => setFilters({...filters, withSlots: e.target.checked})}
+                      className="mr-2"
+                    />
+                    With Available Slots
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {filteredGroups.length === 0 ? (
+              <p className="text-gray-500 py-4 text-center">No groups found. Try adjusting your search or filters.</p>
+            ) : (
+              <div className="space-y-4">
+                {filteredGroups.map((g) => (
+                  <div
+                    key={g.id}
+                    className="p-4 border rounded-lg bg-white shadow-sm"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h3 className="font-semibold text-lg">{g.name}</h3>
+                        <p className="text-sm text-gray-500">
+                          {g.module} • Owner: {g.owner}
+                        </p>
+                        <p className="text-sm mt-1">{g.about}</p>
+                        
+                        <div className="flex items-center mt-3 text-sm">
+                          <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">
+                            {g.meetingPlatform}
+                          </span>
+                          <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                            {g.members.length}/{g.maxParticipants} members
+                          </span>
+                        </div>
+                        
+                        {g.sessions.length > 0 && (
+                          <div className="mt-2 text-xs text-gray-500">
+                            Next session: {g.sessions[0].date} at {g.sessions[0].time}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <button
+                          onClick={() => viewGroupDetails(g)}
+                          className="px-3 py-1 text-sm bg-gray-200 rounded-lg hover:bg-gray-300"
+                        >
+                          View Details
+                        </button>
+                        <button
+                          onClick={() => toggleJoin(g.id)}
+                          className={`px-3 py-1 rounded-lg text-white text-sm ${
+                            g.members.includes(currentUser)
+                              ? "bg-gray-500 hover:bg-gray-600"
+                              : "bg-blue-500 hover:bg-blue-600"
+                          }`}
+                        >
+                          {g.members.includes(currentUser) ? "Leave" : "Join"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </>
+      )}
+
+      {/* Create Group Tab */}
+      {activeTab === "create" && (
+        <Card title="Create New Study Group">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Group Name *
+              </label>
+              <input
+                type="text"
+                value={newGroup.name}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, name: e.target.value })
+                }
+                className="w-full p-2 border rounded-lg"
+                placeholder="e.g., Advanced Calculus Study Group"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Module *
+              </label>
+              <input
+                type="text"
+                value={newGroup.module}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, module: e.target.value })
+                }
+                className="w-full p-2 border rounded-lg"
+                placeholder="e.g., Calculus 101"
+              />
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                About the Group
+              </label>
+              <textarea
+                value={newGroup.about}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, about: e.target.value })
+                }
+                className="w-full p-2 border rounded-lg"
+                rows="2"
+                placeholder="Describe the purpose and focus of this study group..."
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Max Participants
+              </label>
+              <input
+                type="number"
+                min="2"
+                max="20"
+                value={newGroup.maxParticipants}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, maxParticipants: parseInt(e.target.value) })
+                }
+                className="w-full p-2 border rounded-lg"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Meeting Platform
+              </label>
+              <select
+                value={newGroup.meetingPlatform}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, meetingPlatform: e.target.value })
+                }
+                className="w-full p-2 border rounded-lg"
+              >
+                <option value="Microsoft Teams">Microsoft Teams</option>
+                <option value="Zoom">Zoom</option>
+                <option value="Google Meet">Google Meet</option>
+                <option value="Discord">Discord</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+            
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Meeting Link
+              </label>
+              <input
+                type="text"
+                value={newGroup.meetingLink}
+                onChange={(e) =>
+                  setNewGroup({ ...newGroup, meetingLink: e.target.value })
+                }
+                className="w-full p-2 border rounded-lg"
+                placeholder="Paste your meeting link here"
+              />
+            </div>
+          </div>
+          <button
+            onClick={handleCreateGroup}
+            disabled={!newGroup.name || !newGroup.module}
+            className="mt-4 px-6 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-600"
+          >
+            Create Group
+          </button>
+        </Card>
+      )}
+
+      {/* Group Details Tab */}
+      {activeTab === "details" && selectedGroup && (
+        <div className="space-y-6">
+          {/* Group Header */}
+          <Card>
+            <div className="flex justify-between items-start">
+              <div>
+                <h2 className="text-xl font-semibold">{selectedGroup.name}</h2>
+                <p className="text-gray-500">
+                  {selectedGroup.module} • Owner: {selectedGroup.owner}
+                </p>
+                <p className="mt-2">{selectedGroup.about}</p>
+                <div className="flex items-center mt-3 text-sm">
+                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded mr-2">
+                    {selectedGroup.meetingPlatform}
+                  </span>
+                  <span className="bg-gray-100 text-gray-800 px-2 py-1 rounded">
+                    {selectedGroup.members.length}/{selectedGroup.maxParticipants} members
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => toggleJoin(selectedGroup.id)}
+                className={`px-4 py-2 rounded-lg text-white ${
+                  selectedGroup.members.includes(currentUser)
+                    ? "bg-gray-500 hover:bg-gray-600"
+                    : "bg-blue-500 hover:bg-blue-600"
+                }`}
+              >
+                {selectedGroup.members.includes(currentUser) ? "Leave Group" : "Join Group"}
+              </button>
+            </div>
+            
+            {/* Meeting Link */}
+            {selectedGroup.meetingLink && (
+              <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">Meeting Link</p>
+                    <a 
+                      href={selectedGroup.meetingLink} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 text-sm break-all"
+                    >
+                      {selectedGroup.meetingLink}
+                    </a>
+                  </div>
+                  <button
+                    onClick={() => copyMeetingLink(selectedGroup.meetingLink)}
+                    className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                  >
+                    Copy Link
+                  </button>
+                </div>
+              </div>
+            )}
+          </Card>
+
+          {/* Members Section */}
+          <Card title="Members">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {selectedGroup.members.map((member) => (
+                <div key={member} className="flex items-center p-3 border rounded-lg">
+                  <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center mr-3">
+                    {member.charAt(0)}
+                  </div>
+                  <div>
+                    <p className="font-medium">{member}</p>
+                    {member === selectedGroup.owner && (
+                      <p className="text-xs text-gray-500">Owner</p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Study Sessions Section */}
+          <Card title="Study Sessions">
+            {selectedGroup.sessions.length === 0 ? (
+              <p className="text-gray-500 py-4 text-center">No study sessions scheduled yet.</p>
+            ) : (
+              <div className="space-y-3">
+                {selectedGroup.sessions.map((session) => (
+                  <div key={session.id} className="p-3 border rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h4 className="font-medium">{session.topic}</h4>
+                        <p className="text-sm text-gray-500">
+                          {session.date} {session.time && `at ${session.time}`}
+                        </p>
+                      </div>
+                      {selectedGroup.owner === currentUser && (
+                        <button
+                          onClick={() => removeSession(selectedGroup.id, session.id)}
+                          className="text-red-500 hover:text-red-700"
+                          title="Remove session"
+                        >
+                          <X size={16} />
+                        </button>
+                      )}
+                    </div>
+                    {selectedGroup.meetingLink && (
+                      <a
+                        href={selectedGroup.meetingLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-block mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600"
+                      >
+                        Join Session
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {(selectedGroup.owner === currentUser) && (
+              <div className="mt-4 p-3 border rounded-lg bg-gray-50">
+                <h4 className="font-medium mb-2">Schedule Study Session</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Session topic"
+                    value={newSession.topic}
+                    onChange={(e) => setNewSession({...newSession, topic: e.target.value})}
+                    className="p-2 border rounded-lg"
+                  />
+                  <input
+                    type="date"
+                    value={newSession.date}
+                    onChange={(e) => setNewSession({...newSession, date: e.target.value})}
+                    className="p-2 border rounded-lg"
+                  />
+                  <input
+                    type="time"
+                    value={newSession.time}
+                    onChange={(e) => setNewSession({...newSession, time: e.target.value})}
+                    className="p-2 border rounded-lg"
+                  />
+                </div>
+                <button
+                  onClick={() => addSession(selectedGroup.id)}
+                  disabled={!newSession.topic || !newSession.date}
+                  className="mt-3 px-4 py-2 bg-blue-500 text-white rounded-lg disabled:opacity-50"
+                >
+                  Schedule Session
+                </button>
+              </div>
+            )}
+          </Card>
+
+          <div className="flex justify-end">
+            <button
+              onClick={() => setActiveTab("browse")}
+              className="px-4 py-2 bg-gray-200 rounded-lg hover:bg-gray-300"
+            >
+              Back to Groups
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
