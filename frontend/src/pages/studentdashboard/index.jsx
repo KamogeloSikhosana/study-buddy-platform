@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState , useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -99,10 +99,92 @@ function DashboardPage() {
 }
 
 
-
+// -----------Resources Pages ----------- //
 function ResourcesPage() {
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filteredDocuments, setFilteredDocuments] = useState([]);
+
+  // Mock database of existing resources
+  const mockDatabase = [
+    {
+      id: 1,
+      name: "Calculus Textbook.pdf",
+      type: "application/pdf",
+      size: 2500000,
+      uploadDate: "2023-09-15",
+      uploader: "Professor Smith",
+      downloads: 142,
+      url: "#",
+      category: "Mathematics"
+    },
+    {
+      id: 2,
+      name: "Physics Formula Sheet.docx",
+      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      size: 180000,
+      uploadDate: "2023-10-05",
+      uploader: "Dr. Johnson",
+      downloads: 89,
+      url: "#",
+      category: "Physics"
+    },
+    {
+      id: 3,
+      name: "Chemistry Lab Report Template.xlsx",
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      size: 95000,
+      uploadDate: "2023-09-28",
+      uploader: "Lab Assistant",
+      downloads: 67,
+      url: "#",
+      category: "Chemistry"
+    },
+    {
+      id: 4,
+      name: "Biology Presentation.pptx",
+      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      size: 3200000,
+      uploadDate: "2023-10-12",
+      uploader: "Student Council",
+      downloads: 54,
+      url: "#",
+      category: "Biology"
+    },
+    {
+      id: 5,
+      name: "Computer Science Cheat Sheet.pdf",
+      type: "application/pdf",
+      size: 120000,
+      uploadDate: "2023-10-08",
+      uploader: "CS Department",
+      downloads: 203,
+      url: "#",
+      category: "Computer Science"
+    }
+  ];
+
+  // Initialize with mock data
+  useEffect(() => {
+    setDocuments(mockDatabase);
+    setFilteredDocuments(mockDatabase);
+  }, []);
+
+  // Search functionality
+  useEffect(() => {
+    if (searchQuery.trim() === "") {
+      setFilteredDocuments(documents);
+    } else {
+      const query = searchQuery.toLowerCase();
+      const filtered = documents.filter(doc => 
+        doc.name.toLowerCase().includes(query) ||
+        doc.category.toLowerCase().includes(query) ||
+        doc.uploader.toLowerCase().includes(query)
+      );
+      setFilteredDocuments(filtered);
+    }
+  }, [searchQuery, documents]);
 
   // Allowed file types
   const allowedFileTypes = [
@@ -131,7 +213,7 @@ function ResourcesPage() {
     
     setUploading(true);
     
-    // Simulate file upload (in a real app, you would upload to a server)
+    // Simulate file upload to database
     setTimeout(() => {
       const newDocuments = validFiles.map(file => ({
         id: Date.now() + Math.random(),
@@ -139,26 +221,54 @@ function ResourcesPage() {
         type: file.type,
         size: file.size,
         uploadDate: new Date().toLocaleDateString(),
-        url: URL.createObjectURL(file) // In a real app, this would be a server URL
+        uploader: "You",
+        downloads: 0,
+        url: URL.createObjectURL(file),
+        category: "Personal"
       }));
       
-      setDocuments(prev => [...prev, ...newDocuments]);
+      // Add to both documents state and mock database
+      setDocuments(prev => [...newDocuments, ...prev]);
       setUploading(false);
       e.target.value = ''; // Reset file input
-    }, 1000);
+      
+      // Simulate success message
+      alert(`Successfully uploaded ${validFiles.length} file(s) to the database!`);
+    }, 1500);
   };
 
   // Handle file deletion
   const handleDeleteFile = (id) => {
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    if (window.confirm("Are you sure you want to delete this file?")) {
+      setDocuments(prev => prev.filter(doc => doc.id !== id));
+      // In a real app, you would also make an API call to delete from the database
+      alert("File deleted from database!");
+    }
+  };
+
+  // Handle download (simulate database tracking)
+  const handleDownload = (doc) => {
+    // Simulate download tracking in database
+    const updatedDocuments = documents.map(d => 
+      d.id === doc.id ? { ...d, downloads: d.downloads + 1 } : d
+    );
+    setDocuments(updatedDocuments);
+    
+    // Create a temporary link for download
+    const link = document.createElement('a');
+    link.href = doc.url;
+    link.download = doc.name;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   // Get file icon based on type
   const getFileIcon = (type) => {
-    if (type.includes('word')) return '📝';
-    if (type.includes('pdf')) return '📄';
-    if (type.includes('excel') || type.includes('spreadsheet')) return '📊';
-    if (type.includes('powerpoint') || type.includes('presentation')) return '📑';
+    if (type.includes('word')) return '';
+    if (type.includes('pdf')) return '';
+    if (type.includes('excel') || type.includes('spreadsheet')) return '';
+    if (type.includes('powerpoint') || type.includes('presentation')) return '';
     return '📁';
   };
 
@@ -169,6 +279,12 @@ function ResourcesPage() {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    const options = { year: 'numeric', month: 'short', day: 'numeric' };
+    return new Date(dateString).toLocaleDateString(undefined, options);
   };
 
   return (
@@ -203,23 +319,72 @@ function ResourcesPage() {
                   <div className="w-full bg-gray-200 rounded-full h-2">
                     <div className="bg-blue-500 h-2 rounded-full animate-pulse"></div>
                   </div>
+                  <p className="text-xs text-gray-500 mt-2">Saving to database...</p>
                 </div>
               )}
+            </div>
+
+            {/* Database Stats */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-xl">
+              <h4 className="font-semibold text-blue-800 mb-2">Database Info</h4>
+              <div className="space-y-1 text-sm text-blue-600">
+                <p>Total files: {documents.length}</p>
+                <p>Total downloads: {documents.reduce((sum, doc) => sum + doc.downloads, 0)}</p>
+                <p>Categories: {[...new Set(documents.map(doc => doc.category))].join(', ')}</p>
+              </div>
             </div>
           </div>
 
           {/* Documents List */}
           <div className="lg:col-span-2">
-            <Card title="Documents" subtitle="Your uploaded files">
-              {documents.length === 0 ? (
+            <Card title="Resource Library" subtitle="Browse and download study materials">
+              {/* Search Bar */}
+              <div className="mb-4 relative">
+                <input
+                  type="text"
+                  placeholder="Search by name, category, or uploader..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full p-3 pl-10 border rounded-lg focus:ring-2 focus:ring-blue-300 focus:border-blue-300"
+                />
+                <svg 
+                  className="w-5 h-5 text-gray-400 absolute left-3 top-3.5" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+
+              {/* Category Filter */}
+              <div className="flex flex-wrap gap-2 mb-4">
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className={`px-3 py-1 rounded-full text-sm ${searchQuery === "" ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                >
+                  All
+                </button>
+                {[...new Set(documents.map(doc => doc.category))].map(category => (
+                  <button 
+                    key={category}
+                    onClick={() => setSearchQuery(category)}
+                    className={`px-3 py-1 rounded-full text-sm ${searchQuery === category ? "bg-blue-500 text-white" : "bg-gray-200 text-gray-700"}`}
+                  >
+                    {category}
+                  </button>
+                ))}
+              </div>
+
+              {filteredDocuments.length === 0 ? (
                 <div className="text-center py-8 text-gray-500">
                   <FolderOpen size={48} className="mx-auto mb-4 opacity-50" />
-                  <p>No documents uploaded yet</p>
-                  <p className="text-sm">Upload your first file to get started</p>
+                  <p>No documents found</p>
+                  <p className="text-sm">{searchQuery ? "Try a different search term" : "Upload your first file to get started"}</p>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {documents.map((doc) => (
+                  {filteredDocuments.map((doc) => (
                     <div
                       key={doc.id}
                       className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -228,37 +393,60 @@ function ResourcesPage() {
                         <span className="text-2xl">{getFileIcon(doc.type)}</span>
                         <div>
                           <h4 className="font-medium text-sm">{doc.name}</h4>
-                          <p className="text-xs text-gray-500">
-                            {formatFileSize(doc.size)} • {doc.uploadDate}
-                          </p>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="text-xs px-2 py-1 bg-blue-100 text-blue-800 rounded-full">
+                              {doc.category}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {formatFileSize(doc.size)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              Uploaded by {doc.uploader}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {formatDate(doc.uploadDate)}
+                            </span>
+                          </div>
+                          <div className="mt-1 flex items-center text-xs text-gray-500">
+                            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            {doc.downloads} downloads
+                          </div>
                         </div>
                       </div>
                       
                       <div className="flex items-center gap-2">
-                        <a
-                          href={doc.url}
-                          download={doc.name}
-                          className="p-2 text-gray-600 hover:text-gray-800"
+                        <button
+                          onClick={() => handleDownload(doc)}
+                          className="p-2 text-blue-600 hover:text-blue-800"
                           title="Download"
                         >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                           </svg>
-                        </a>
-                        <button
-                          onClick={() => handleDeleteFile(doc.id)}
-                          className="p-2 text-gray-600 hover:text-red-600"
-                          title="Delete"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
                         </button>
+                        {doc.uploader === "You" && (
+                          <button
+                            onClick={() => handleDeleteFile(doc.id)}
+                            className="p-2 text-gray-600 hover:text-red-600"
+                            title="Delete"
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
               )}
+
+              {/* Database Info */}
+              <div className="mt-4 text-xs text-gray-500 text-center">
+                <p>All files are stored in the database and can be accessed from any device.</p>
+              </div>
             </Card>
           </div>
         </div>
