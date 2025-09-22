@@ -32,7 +32,7 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
     try {
       const response = await axios.post("http://localhost:3000/api/login", {
         email,
-        password
+        password,
       });
 
       const user = response.data;
@@ -40,11 +40,9 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
       // Save user in context
       login(user);
 
-      // Redirect based on role
-      if (user.role === "student") {
-        navigate("/studentdashboard", { replace: true }); // your student dashboard
-      } else if (user.role === "admin") {
-        navigate("/admin", { replace: true }); // empty page for now
+      // Redirect based on backend `redirect` field if present, else role
+      if (user.redirect) {
+        navigate(user.redirect, { replace: true });
       }
 
       handleClose();

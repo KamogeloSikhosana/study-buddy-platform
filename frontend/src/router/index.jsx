@@ -28,7 +28,7 @@ const router = createBrowserRouter([
     ),
     children: [
       {
-        path: "/student",
+        path: "/studentdashboard",
         element: (
           <RoleRoute allowed={["student"]}>
             <StudentDashboard />

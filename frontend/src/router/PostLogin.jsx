@@ -10,7 +10,7 @@ export default function PostLogin() {
   useEffect(() => {
     console.debug("[PostLogin] role =", role);
     if (!role) return; // wait until role exists
-    if (role === "student")          navigate("/", { replace: true });
+    if (role === "student")          navigate("/studentdashboard", { replace: true });
     else if (role === "society-admin") navigate("/society-admin", { replace: true });
     else if (role === "admin")         navigate("/admin", { replace: true });
     else                               navigate("/", { replace: true });
