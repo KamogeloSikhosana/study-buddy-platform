@@ -45,8 +45,7 @@ router.post("/login", async (req, res) => {
       return res.json({
         id: student.student_id,
         name: `${student.name} ${student.surname}`,
-        role: "student",
-        redirect: "/"
+        role: "student"
       });
     }
 
@@ -60,8 +59,7 @@ router.post("/login", async (req, res) => {
       return res.json({
         id: admin.admin_id,
         name: "Admin",
-        role: "admin",
-        redirect: "/admin" // for now empty page
+        role: "admin"
       });
     }
 

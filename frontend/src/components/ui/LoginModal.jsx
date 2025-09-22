@@ -42,9 +42,9 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
 
       // Redirect based on role
       if (user.role === "student") {
-        navigate("/studentdashboard", { replace: true });
+        navigate("/studentdashboard", { replace: true }); // your student dashboard
       } else if (user.role === "admin") {
-        navigate("/", { replace: true }); // empty page for now
+        navigate("/admin", { replace: true }); // empty page for now
       }
 
       handleClose();
@@ -52,7 +52,8 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
       setError(err.response?.data?.error || "Something went wrong");
     }
   };
-  
+
+
   return (
     <Dialog open={open} onClose={handleClose} className="relative z-50">
       {/* Overlay */}
