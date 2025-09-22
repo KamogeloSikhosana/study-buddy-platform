@@ -2,6 +2,7 @@ import { Dialog } from "@headlessui/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function LoginModal({ open, onClose, goSignup, goForgot }) {
   const { login } = useAuth();
@@ -10,12 +11,6 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-
-  const mockUsers = [
-    { id: 1, email: "student@test.com", password: "student12", name: "Demo Student", role: "student", redirect: "/" },
-    { id: 2, email: "society@test.com", password: "society12", name: "Society Admin", role: "society-admin", redirect: "/society-admin" },
-    { id: 3, email: "admin@test.com", password: "admin12", name: "Platform Admin", role: "admin", redirect: "/admin" },
-  ];
 
   const resetForm = () => {
     setEmail("");
@@ -32,22 +27,32 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
     onClose?.();
   };
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    try {
+      const response = await axios.post("http://localhost:3000/api/login", {
+        email,
+        password
+      });
 
-    const user = mockUsers.find(
-      (u) => u.email === email.trim() && u.password === password
-    );
+      const user = response.data;
 
-    if (user) {
+      // Save user in context
       login(user);
-      navigate(user.redirect, { replace: true });
+
+      // Redirect based on role
+      if (user.role === "student") {
+        navigate("/studentdashboard", { replace: true });
+      } else if (user.role === "admin") {
+        navigate("/", { replace: true }); // empty page for now
+      }
+
       handleClose();
-    } else {
-      setError("Invalid email or password.");
+    } catch (err) {
+      setError(err.response?.data?.error || "Something went wrong");
     }
   };
-
+  
   return (
     <Dialog open={open} onClose={handleClose} className="relative z-50">
       {/* Overlay */}

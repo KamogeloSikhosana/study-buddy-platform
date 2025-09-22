@@ -30,4 +30,47 @@ router.post("/signup", async (req, res) => {
   }
 });
 
+// Login route
+router.post("/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check Students table
+    const [students] = await db.query("SELECT * FROM Students WHERE email = ?", [email]);
+    if (students.length > 0) {
+      const student = students[0];
+      const isMatch = await bcrypt.compare(password, student.password);
+      if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+      return res.json({
+        id: student.student_id,
+        name: `${student.name} ${student.surname}`,
+        role: "student",
+        redirect: "/"
+      });
+    }
+
+    // Check Admins table
+    const [admins] = await db.query("SELECT * FROM Admins WHERE email = ?", [email]);
+    if (admins.length > 0) {
+      const admin = admins[0];
+      const isMatch = await bcrypt.compare(password, admin.password);
+      if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
+
+      return res.json({
+        id: admin.admin_id,
+        name: "Admin",
+        role: "admin",
+        redirect: "/admin" // for now empty page
+      });
+    }
+
+    // No user found
+    res.status(401).json({ error: "Invalid credentials" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
