@@ -2,6 +2,8 @@ import { Dialog } from "@headlessui/react";
 import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
+
 
 export default function SignupModal({ open, onClose, goLogin }) {
   const { login } = useAuth();
@@ -32,18 +34,31 @@ export default function SignupModal({ open, onClose, goLogin }) {
     onClose?.();
   };
 
-  const handleSignup = (e) => {
-    e.preventDefault();
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
+  //Uses Axios
+  const handleSignup = async (e) => {
+  e.preventDefault();
+  if (password !== confirmPassword) {
+    setError("Passwords do not match.");
+    return;
+  }
 
-    // TODO: Replace with API call
-    login({ id: 1, name: `${name} ${surname}`, role: "student" });
+  try {
+    const response = await axios.post("http://localhost:3000/api/signup", {
+      name,
+      surname,
+      email,
+      password
+    });
+
+    console.log(response.data); // user created
+    login({ id: response.data.student_id, name: `${name} ${surname}`, role: "student" });
     navigate("/", { replace: true });
     handleClose();
-  };
+  } catch (err) {
+    setError(err.response?.data?.error || "Something went wrong");
+  }
+};
+
 
   const clearOnChange = (setter) => (e) => {
     setter(e.target.value);
