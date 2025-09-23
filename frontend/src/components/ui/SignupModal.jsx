@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 
 export default function SignupModal({ open, onClose, goLogin }) {
@@ -47,17 +48,41 @@ export default function SignupModal({ open, onClose, goLogin }) {
       name,
       surname,
       email,
-      password
+      password,
     });
 
-    console.log(response.data); // user created
-    login({ id: response.data.student_id, name: `${name} ${surname}`, role: "student" });
+    // Show success popup
+    Swal.fire({
+      icon: "success",
+      title: "Signup Successful",
+      text: response.data.message || "Account created successfully!",
+      confirmButtonColor: "#3085d6",
+    });
+
+    // Save user into context
+    login({
+      id: response.data.student_id,
+      name: `${name} ${surname}`,
+      role: "student",
+    });
+
     navigate("/", { replace: true });
     handleClose();
   } catch (err) {
-    setError(err.response?.data?.error || "Something went wrong");
+    const errorMsg = err.response?.data?.error || "Something went wrong";
+
+    // Show error popup
+    Swal.fire({
+      icon: "error",
+      title: "Signup Failed",
+      text: errorMsg,
+      confirmButtonColor: "#d33",
+    });
+
+    setError(errorMsg);
   }
 };
+
 
 
   const clearOnChange = (setter) => (e) => {

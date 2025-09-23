@@ -43,10 +43,12 @@ router.post("/login", async (req, res) => {
       if (!isMatch) return res.status(401).json({ error: "Invalid credentials" });
 
       return res.json({
-        id: student.student_id,
-        name: `${student.name} ${student.surname}`,
-        role: "student"
-      });
+      id: student.student_id,
+      name: `${student.name} ${student.surname}`,
+      role: "student",
+       redirect: "/studentdashboard",
+      message: "Login successful",   // 👈 add this
+});
     }
 
     // Check Admins table
@@ -59,8 +61,9 @@ router.post("/login", async (req, res) => {
       return res.json({
         id: admin.admin_id,
         name: "Admin",
-        role: "admin"
-      });
+        role: "admin",
+        message: "Login successful",   // 👈 add this
+});
     }
 
     // No user found

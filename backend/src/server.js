@@ -2,6 +2,8 @@ import express from "express";
 import cors from "cors";
 import db from "./config/db.js";
 import authRoutes from "./routes/auth.js"; // default import
+import resourcesRouter from "./routes/resources.js";
+import path from "path";
 
 const app = express();
 app.use(cors());
@@ -19,6 +21,11 @@ app.get("/", async (req, res) => {
 
 // Use auth routes
 app.use("/api", authRoutes);
+
+//resource route
+// Serve uploaded files
+app.use("/uploads", express.static(path.join("./uploads")));
+app.use("/api/resources", resourcesRouter);
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

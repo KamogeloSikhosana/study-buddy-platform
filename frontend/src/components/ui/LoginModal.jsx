@@ -1,29 +1,29 @@
 import { Dialog } from "@headlessui/react";
-import { useEffect, useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import Swal from "sweetalert2";
 
 export default function LoginModal({ open, onClose, goSignup, goForgot }) {
   const { login } = useAuth();
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-
-  const resetForm = () => {
-    setEmail("");
-    setPassword("");
-    setError("");
-  };
+  const [error, setError] = useState(""); // <-- Add this
 
   useEffect(() => {
-    if (!open) resetForm();
+    if (!open) {
+      setEmail("");
+      setPassword("");
+      setError(""); // Reset error when modal closes
+    }
   }, [open]);
 
   const handleClose = () => {
-    resetForm();
+    setEmail("");
+    setPassword("");
+    setError(""); // Reset error
     onClose?.();
   };
 
@@ -37,31 +37,39 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
 
       const user = response.data;
 
-      // Save user in context
+      // Save user to context
       login(user);
 
-      // Redirect based on backend `redirect` field if present, else role
-      if (user.redirect) {
-        navigate(user.redirect, { replace: true });
-      }
+      // Redirect based on role
+      if (user.role === "student") navigate("/studentdashboard", { replace: true });
+      else if (user.role === "society-admin") navigate("/society-admin", { replace: true });
+      else if (user.role === "admin") navigate("/admin", { replace: true });
+      else navigate("/", { replace: true });
 
       handleClose();
+
+      // Show welcome popup
+      Swal.fire({
+        icon: "success",
+        title: `Welcome ${user.name}!`,
+        confirmButtonColor: "#3085d6",
+      });
     } catch (err) {
-      setError(err.response?.data?.error || "Something went wrong");
+      setError(err.response?.data?.error || "Something went wrong"); // <-- Set error state
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: err.response?.data?.error || "Something went wrong",
+        confirmButtonColor: "#d33",
+      });
     }
   };
 
-
   return (
     <Dialog open={open} onClose={handleClose} className="relative z-50">
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" aria-hidden="true" />
-
-      {/* Dialog */}
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="relative w-full max-w-md rounded-2xl bg-white p-6 space-y-4">
-
-          {/* Close */}
           <button
             onClick={handleClose}
             className="absolute top-3 right-3 text-dark/60 hover:text-blue-600 transition text-2xl leading-none cursor-pointer"
@@ -70,66 +78,45 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
             ×
           </button>
 
-          {/* Logo */}
           <div className="flex justify-center mb-4">
             <img src="/src/assets/logo.png" alt="Study Buddy Logo" className="h-24 w-auto" />
           </div>
 
-          {/* Title */}
           <p className="text-xl font-semibold text-center text-dark">
-            Welcome to Study Buddy! Connect with your ideal study partners.
+            Welcome to Study Buddy!
           </p>
 
-          {/* Inline error */}
           {error && (
             <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-3">
-
-            {/* Email Input */}
             <div className="relative">
               <label className="block text-sm font-medium text-dark">Email</label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-                  </svg>
-                </span>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="Enter email"
-                  required
-                  autoComplete="email"
-                />
-              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="Enter email"
+                required
+                autoComplete="email"
+              />
             </div>
 
-            {/* Password Input */}
             <div className="relative">
               <label className="block text-sm font-medium text-dark">Password</label>
-              <div className="mt-1 relative">
-                <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-400">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor" className="w-5 h-5">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                  </svg>
-                </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
-                  className="w-full pl-9 rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                  placeholder="Enter password"
-                  required
-                  autoComplete="current-password"
-                />
-              </div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => { setPassword(e.target.value); if (error) setError(""); }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-dark text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                placeholder="Enter password"
+                required
+                autoComplete="current-password"
+              />
               <div className="flex justify-end mt-1">
                 <button
                   type="button"
@@ -141,7 +128,6 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
               </div>
             </div>
 
-            {/* Submit */}
             <button
               type="submit"
               className="w-full rounded-lg bg-gradient-to-r from-blue-500 to-blue-400 py-2 text-white font-semibold hover:opacity-90 transition"
@@ -150,12 +136,11 @@ export default function LoginModal({ open, onClose, goSignup, goForgot }) {
             </button>
           </form>
 
-          {/* Switch to signup */}
           <p className="text-center text-sm text-dark">
             Don’t have an account?{" "}
             <button
               type="button"
-              onClick={() => { resetForm(); goSignup?.(); }}
+              onClick={goSignup}
               className="font-semibold text-blue-600 hover:underline cursor-pointer"
             >
               Sign Up

@@ -173,18 +173,31 @@ function ResourcesPage() {
 
   // Search functionality
   useEffect(() => {
-    if (searchQuery.trim() === "") {
-      setFilteredDocuments(documents);
-    } else {
-      const query = searchQuery.toLowerCase();
-      const filtered = documents.filter(doc => 
-        doc.name.toLowerCase().includes(query) ||
-        doc.category.toLowerCase().includes(query) ||
-        doc.uploader.toLowerCase().includes(query)
-      );
-      setFilteredDocuments(filtered);
+  const fetchResources = async () => {
+    try {
+      const res = await axios.get("http://localhost:5000/api/resources");
+      // Map backend data to frontend format
+      const docs = res.data.map(doc => ({
+        id: doc.resource_id,
+        name: doc.resource_name,
+        type: "", // optional: you can extract type from file extension
+        size: 0,  // optional: if you store file size in DB
+        uploadDate: doc.uploaded_at,
+        uploader: doc.uploader,
+        downloads: 0, // optional: track downloads in DB later
+        url: `http://localhost:5000/${doc.file_path}`,
+        category: "General"
+      }));
+      setDocuments(docs);
+      setFilteredDocuments(docs);
+    } catch (err) {
+      console.error(err);
+      alert("Failed to fetch resources");
     }
-  }, [searchQuery, documents]);
+  };
+
+  fetchResources();
+}, []);
 
   // Allowed file types
   const allowedFileTypes = [
@@ -198,70 +211,75 @@ function ResourcesPage() {
   ];
 
   // Handle file upload
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    
-    // Filter for allowed file types
-    const validFiles = files.filter(file => 
-      allowedFileTypes.includes(file.type)
-    );
-    
-    if (validFiles.length === 0) {
-      alert('Please upload only Word, PDF, Excel, or PowerPoint files');
-      return;
-    }
-    
+  const handleFileUpload = async (e) => {
+  const files = Array.from(e.target.files);
+
+  if (files.length === 0) return;
+
+  const formData = new FormData();
+  files.forEach(file => formData.append("file", file));
+  formData.append("student_id", 1); // replace with actual student ID from auth
+
+  try {
     setUploading(true);
-    
-    // Simulate file upload to database
-    setTimeout(() => {
-      const newDocuments = validFiles.map(file => ({
-        id: Date.now() + Math.random(),
-        name: file.name,
-        type: file.type,
-        size: file.size,
-        uploadDate: new Date().toLocaleDateString(),
-        uploader: "You",
-        downloads: 0,
-        url: URL.createObjectURL(file),
-        category: "Personal"
-      }));
-      
-      // Add to both documents state and mock database
-      setDocuments(prev => [...newDocuments, ...prev]);
-      setUploading(false);
-      e.target.value = ''; // Reset file input
-      
-      // Simulate success message
-      alert(`Successfully uploaded ${validFiles.length} file(s) to the database!`);
-    }, 1500);
-  };
+    const res = await axios.post("http://localhost:5000/api/resources/upload", formData, {
+      headers: { "Content-Type": "multipart/form-data" }
+    });
+
+    alert(res.data.message);
+
+    // Refresh the documents list after upload
+    const updatedRes = await axios.get("http://localhost:5000/api/resources");
+    const docs = updatedRes.data.map(doc => ({
+      id: doc.resource_id,
+      name: doc.resource_name,
+      type: "",
+      size: 0,
+      uploadDate: doc.uploaded_at,
+      uploader: doc.uploader,
+      downloads: 0,
+      url: `http://localhost:5000/${doc.file_path}`,
+      category: "General"
+    }));
+    setDocuments(docs);
+    setFilteredDocuments(docs);
+
+  } catch (err) {
+    console.error(err);
+    alert("Upload failed");
+  } finally {
+    setUploading(false);
+    e.target.value = '';
+  }
+};
+
 
   // Handle file deletion
-  const handleDeleteFile = (id) => {
-    if (window.confirm("Are you sure you want to delete this file?")) {
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
-      // In a real app, you would also make an API call to delete from the database
-      alert("File deleted from database!");
-    }
-  };
+ const handleDeleteFile = async (id) => {
+  if (!window.confirm("Are you sure you want to delete this file?")) return;
+
+  try {
+    await axios.delete(`http://localhost:5000/api/resources/${id}`);
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    setFilteredDocuments(prev => prev.filter(doc => doc.id !== id));
+    alert("File deleted successfully");
+  } catch (err) {
+    console.error(err);
+    alert("Failed to delete file");
+  }
+};
+
 
   // Handle download (simulate database tracking)
   const handleDownload = (doc) => {
-    // Simulate download tracking in database
-    const updatedDocuments = documents.map(d => 
-      d.id === doc.id ? { ...d, downloads: d.downloads + 1 } : d
-    );
-    setDocuments(updatedDocuments);
-    
-    // Create a temporary link for download
-    const link = document.createElement('a');
-    link.href = doc.url;
-    link.download = doc.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const link = document.createElement('a');
+  link.href = doc.url;
+  link.download = doc.name;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+};
+
 
   // Get file icon based on type
   const getFileIcon = (type) => {

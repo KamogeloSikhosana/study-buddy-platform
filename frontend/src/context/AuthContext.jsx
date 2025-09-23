@@ -1,3 +1,4 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from "react";
 
 const AuthContext = createContext();
@@ -11,7 +12,6 @@ export function AuthProvider({ children }) {
     if (storedUser) setUser(JSON.parse(storedUser));
   }, []);
 
-  // Save user to localStorage whenever it changes
   const login = (userData) => {
     setUser(userData);
     localStorage.setItem("user", JSON.stringify(userData));
@@ -22,12 +22,14 @@ export function AuthProvider({ children }) {
     localStorage.removeItem("user");
   };
 
+  const isAuthenticated = !!user;
+  const role = user?.role || null;
+
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, role, isAuthenticated, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
 }
 
-// Custom hook for easy access
 export const useAuth = () => useContext(AuthContext);
