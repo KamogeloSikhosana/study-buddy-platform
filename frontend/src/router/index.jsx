@@ -6,7 +6,6 @@ import Landing from "@/pages/public/Landing";
 import NotFound from "@/pages/public/NotFound";
 
 import StudentDashboard from "@/pages/studentdashboard/index.jsx";
-import SocietyAdminDashboard from "@/pages/societyadmindashboard/index.jsx";
 import AdminDashboard from "@/pages/admindashboard/index.jsx";
 
 import ProtectedRoute from "./ProtectedRoute";
@@ -21,37 +20,28 @@ const router = createBrowserRouter([
     ],
   },
   {
+    path: "/studentdashboard",
     element: (
       <ProtectedRoute>
-        <DashboardLayout />
+        <RoleRoute allowed={["student"]}>
+          <DashboardLayout>
+            <StudentDashboard />
+          </DashboardLayout>
+        </RoleRoute>
       </ProtectedRoute>
     ),
-    children: [
-      {
-        path: "/studentdashboard",
-        element: (
-          <RoleRoute allowed={["student"]}>
-            <StudentDashboard />
-          </RoleRoute>
-        ),
-      },
-      {
-        path: "/society-admin",
-        element: (
-          <RoleRoute allowed={["society-admin"]}>
-            <SocietyAdminDashboard />
-          </RoleRoute>
-        ),
-      },
-      {
-        path: "/admin",
-        element: (
-          <RoleRoute allowed={["admin"]}>
+  },
+  {
+    path: "/admindashboard",
+    element: (
+      <ProtectedRoute>
+        <RoleRoute allowed={["admin"]}>
+          <DashboardLayout>
             <AdminDashboard />
-          </RoleRoute>
-        ),
-      },
-    ],
+          </DashboardLayout>
+        </RoleRoute>
+      </ProtectedRoute>
+    ),
   },
 ]);
 
