@@ -294,19 +294,35 @@ function DashboardPage() {
     ]);
   };
 
-  // Enhanced profile image URL handler
+
   const getProfileImageUrl = (imagePath) => {
+    console.log("🔍 Processing image path:", imagePath);
+    
     if (!imagePath) {
+      console.log("❌ No image path provided, using default");
       return "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80";
     }
     
     // If it's already a full URL, return as is
     if (imagePath.startsWith('http')) {
+      console.log("✅ Already a full URL:", imagePath);
       return imagePath;
     }
     
+    // Handle absolute Windows paths (like C:\Users\...)
+    if (imagePath.startsWith('C:\\') || imagePath.includes(':\\')) {
+      console.log("🪟 Windows absolute path detected");
+      
+      // Extract just the filename from the absolute path
+      const filename = imagePath.split('\\').pop();
+      console.log("📸 Extracted filename:", filename);
+      
+      const finalUrl = `http://localhost:3000/uploads/profile_images/${filename}`;
+      console.log("✅ Converted to URL:", finalUrl);
+      return finalUrl;
+    }
+    
     // If it's a local file path, convert to accessible URL
-    // Handle different path formats
     let cleanPath = imagePath;
     
     // Remove any leading slashes or backslashes
@@ -315,17 +331,23 @@ function DashboardPage() {
     // Handle Windows paths
     cleanPath = cleanPath.replace(/\\/g, '/');
     
+    console.log("🔧 Cleaned path:", cleanPath);
+    
     // If it starts with uploads, serve from static route
     if (cleanPath.startsWith('uploads/')) {
-      return `http://localhost:3000/${cleanPath}`;
+      const finalUrl = `http://localhost:3000/${cleanPath}`;
+      console.log("✅ Serving from uploads:", finalUrl);
+      return finalUrl;
     }
     
     // If it's just a filename, assume it's in profile_images
     if (!cleanPath.includes('/')) {
-      return `http://localhost:3000/uploads/profile_images/${cleanPath}`;
+      const finalUrl = `http://localhost:3000/uploads/profile_images/${cleanPath}`;
+      console.log("✅ Serving from profile_images:", finalUrl);
+      return finalUrl;
     }
     
-    // Default fallback
+    console.log("❓ Unknown path format, using default");
     return "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80";
   };
 
@@ -437,7 +459,7 @@ function DashboardPage() {
                 }}
               />
               <h2 className="text-xl font-semibold text-gray-900">{student?.name || "Student Name"}</h2>
-              <p className="text-gray-600 mb-1">{student?.course || "Not specified"} • {student?.year || "Not specified"}</p>
+              <p className="text-gray-600 mb-1">{student?.course || "Not specified"} </p>
               <p className="text-sm text-gray-500 mb-4">{student?.university || "Not specified"}</p>
             </div>
 
