@@ -6,8 +6,9 @@ import fs from "fs";
 import db from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import profileRouter from "./routes/profile.js";
+import studentRoutes from "./routes/students.js"; // ADD THIS IMPORT
 import resourceRoutes from "./routes/resources.js";
-import studySessionsRouter from "./routes/studySessions.js"; // updated import
+import studySessionsRouter from "./routes/studySessions.js"; 
 
 const app = express();
 
@@ -29,7 +30,6 @@ app.use("/uploads", express.static(uploadsDir));
 // Logging middleware
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  console.log("Headers:", req.headers);
   next();
 });
 
@@ -46,14 +46,9 @@ app.get("/", async (req, res) => {
 // Routes
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRouter);
-app.use("/api/study-sessions", studySessionsRouter); // updated route path
+app.use("/api/students", studentRoutes); // ADD THIS LINE
+app.use("/api/study-sessions", studySessionsRouter); 
 app.use("/api/resources", resourceRoutes);
-
-
-// Test route for study sessions
-app.get("/api/test-study-sessions", (req, res) => {
-  res.json({ message: "Study sessions test route works!" });
-});
 
 // 404 handler
 app.use((req, res) => {

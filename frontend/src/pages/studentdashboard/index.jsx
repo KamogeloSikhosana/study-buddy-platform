@@ -1,4 +1,6 @@
 import React, { useState , useEffect } from "react";
+import { useAuth } from "@/context/AuthContext";
+import axios from "axios";
 import {
   LayoutDashboard,
   Users,
@@ -117,82 +119,19 @@ function Sidebar({ page, setPage, onLogout }) {
 }
 
 // ----------- Pages ----------- //
-// ----------- Dashboard Page ----------- //
 function DashboardPage() {
-  const [student, setStudent] = useState({
-    name: "Sarah Johnson",
-    image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1887&q=80",
-    course: "Computer Science",
-    year: "3rd Year",
-    university: "University of Technology",
-    studentId: "UT2021001",
-    email: "sarah.j@university.edu",
-    joinDate: "September 2021",
-    status: "Active"
-  });
-
+  const { user } = useAuth();
+  const [student, setStudent] = useState(null);
   const [stats, setStats] = useState({
-    studyGroups: 3,
-    resources: 12,
-    forumPosts: 8,
-    upcomingSessions: 2
+    studyGroups: 0,
+    resources: 0,
+    forumPosts: 0,
+    upcomingSessions: 0
   });
-
-  const [recentActivity, setRecentActivity] = useState([
-    {
-      id: 1,
-      type: "study_group",
-      title: "Joined Calculus Study Group",
-      description: "You joined the Calculus 101 study group",
-      time: "2 hours ago",
-      icon: "👥"
-    },
-    {
-      id: 2,
-      type: "resource",
-      title: "Uploaded Physics Notes",
-      description: "You shared Physics Formula Sheet with the community",
-      time: "1 day ago",
-      icon: "📚"
-    },
-    {
-      id: 3,
-      type: "forum",
-      title: "Posted in Forum",
-      description: "You asked about upcoming workshop schedule",
-      time: "2 days ago",
-      icon: "💬"
-    },
-    {
-      id: 4,
-      type: "session",
-      title: "Study Session Completed",
-      description: "Attended Web Development study session",
-      time: "3 days ago",
-      icon: "🎯"
-    }
-  ]);
-
-  const [upcomingSessions, setUpcomingSessions] = useState([
-    {
-      id: 1,
-      title: "Advanced Algorithms Study",
-      group: "CS Study Group",
-      date: "2024-01-20",
-      time: "14:00",
-      duration: "2 hours",
-      participants: 8
-    },
-    {
-      id: 2,
-      title: "Database Systems Review",
-      group: "Database Club",
-      date: "2024-01-22",
-      time: "16:00",
-      duration: "1.5 hours",
-      participants: 6
-    }
-  ]);
+  const [recentActivity, setRecentActivity] = useState([]);
+  const [upcomingSessions, setUpcomingSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const [quickActions, setQuickActions] = useState([
     {
@@ -229,10 +168,175 @@ function DashboardPage() {
     }
   ]);
 
+  // Fetch student data and dashboard stats
+  useEffect(() => {
+    fetchDashboardData();
+  }, [user]);
+
+  const fetchDashboardData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const token = localStorage.getItem("token");
+      
+      console.log("🔍 Fetching dashboard data for user:", user);
+
+      if (!user || !user.id) {
+        console.error("❌ No user data available");
+        setError("No user data available");
+        setLoading(false);
+        return;
+      }
+
+      // Try multiple endpoints to find the correct one
+      let studentResponse;
+
+      // First try: Get current user's profile
+      try {
+        studentResponse = await axios.get(`http://localhost:3000/api/students/profile/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        console.log("✅ Profile me endpoint success:", studentResponse.data);
+      } catch (profileError) {
+        console.log("❌ Profile me endpoint failed, trying by ID...");
+        
+        // Second try: Get student by ID
+        try {
+          studentResponse = await axios.get(`http://localhost:3000/api/students/${user.id}`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          console.log("✅ Student by ID endpoint success:", studentResponse.data);
+        } catch (idError) {
+          console.log("❌ Both endpoints failed, using fallback data");
+          setError("Failed to fetch student data from server");
+          throw new Error("All student endpoints failed");
+        }
+      }
+
+      if (studentResponse.data.success) {
+        console.log("📊 Setting student data:", studentResponse.data.data);
+        setStudent(studentResponse.data.data);
+      } else {
+        throw new Error("Student API returned unsuccessful response");
+      }
+
+      // Fetch other data (resources, study groups, etc.)
+      await fetchOtherData(token);
+
+    } catch (error) {
+      console.error("❌ Error fetching dashboard data:", error);
+      // Fallback to mock data
+      setStudent({
+        name: user?.name || "Student Name",
+        email: user?.email || "student@university.edu",
+        course: "Computer Science",
+        year: "3rd Year",
+        university: "University of Technology",
+        joinDate: "September 2021",
+        image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80",
+        bio: "Computer Science student passionate about technology and innovation.",
+        address: "123 University Ave, Campus Town"
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchOtherData = async (token) => {
+    try {
+      // Fetch resources count
+      const resourcesResponse = await axios.get("http://localhost:3000/api/resources/all", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (resourcesResponse.data.success) {
+        const userResources = resourcesResponse.data.data.filter(
+          resource => resource.student_id === user?.id
+        );
+        setStats(prev => ({
+          ...prev,
+          resources: userResources.length
+        }));
+      }
+    } catch (resourcesError) {
+      console.error("Error fetching resources:", resourcesError);
+      setStats(prev => ({ ...prev, resources: 5 })); // Default value
+    }
+
+    // Set default values for other stats
+    setStats(prev => ({
+      ...prev,
+      studyGroups: 3,
+      forumPosts: 8,
+      upcomingSessions: 2
+    }));
+
+    // Set mock upcoming sessions
+    setUpcomingSessions([
+      {
+        id: 1,
+        title: "Advanced Algorithms Study",
+        group: "CS Study Group",
+        date: "2024-01-20",
+        time: "14:00",
+        duration: "2 hours",
+        participants: 8
+      },
+      {
+        id: 2,
+        title: "Database Systems Review",
+        group: "Database Club",
+        date: "2024-01-22",
+        time: "16:00",
+        duration: "1.5 hours",
+        participants: 6
+      }
+    ]);
+  };
+
+  // Enhanced profile image URL handler
+  const getProfileImageUrl = (imagePath) => {
+    if (!imagePath) {
+      return "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80";
+    }
+    
+    // If it's already a full URL, return as is
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // If it's a local file path, convert to accessible URL
+    // Handle different path formats
+    let cleanPath = imagePath;
+    
+    // Remove any leading slashes or backslashes
+    cleanPath = cleanPath.replace(/^[\\/]+/, '');
+    
+    // Handle Windows paths
+    cleanPath = cleanPath.replace(/\\/g, '/');
+    
+    // If it starts with uploads, serve from static route
+    if (cleanPath.startsWith('uploads/')) {
+      return `http://localhost:3000/${cleanPath}`;
+    }
+    
+    // If it's just a filename, assume it's in profile_images
+    if (!cleanPath.includes('/')) {
+      return `http://localhost:3000/uploads/profile_images/${cleanPath}`;
+    }
+    
+    // Default fallback
+    return "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80";
+  };
+
   // Format date for display
   const formatDate = (dateString) => {
-    const options = { weekday: 'short', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString('en-US', options);
+    try {
+      const options = { weekday: 'short', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString('en-US', options);
+    } catch (error) {
+      return dateString;
+    }
   };
 
   // Get greeting based on time of day
@@ -243,6 +347,45 @@ function DashboardPage() {
     return "Good evening";
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="space-y-4">
+              <div className="h-64 bg-gray-200 rounded"></div>
+              <div className="h-48 bg-gray-200 rounded"></div>
+            </div>
+            <div className="lg:col-span-2 space-y-4">
+              <div className="h-32 bg-gray-200 rounded"></div>
+              <div className="h-64 bg-gray-200 rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error && !student) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+          <div className="text-red-600 text-lg font-semibold mb-2">Error Loading Dashboard</div>
+          <p className="text-red-500 mb-4">{error}</p>
+          <button 
+            onClick={fetchDashboardData}
+            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* Welcome Section */}
@@ -250,7 +393,7 @@ function DashboardPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold mb-2">
-              {getGreeting()}, {student.name}!
+              {getGreeting()}, {student?.name?.split(' ')[0] || "Student"}!
             </h1>
             <p className="text-blue-100">
               Welcome back to your study dashboard. Here's what's happening today.
@@ -270,6 +413,15 @@ function DashboardPage() {
         </div>
       </div>
 
+      {error && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <span className="text-yellow-600 mr-2">⚠️</span>
+            <span className="text-yellow-800">{error}</span>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left Column - Student Profile & Quick Actions */}
         <div className="lg:col-span-1 space-y-6">
@@ -277,34 +429,45 @@ function DashboardPage() {
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
             <div className="text-center">
               <img
-                src={student.image}
-                alt={student.name}
+                src={getProfileImageUrl(student?.image)}
+                alt={student?.name}
                 className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg mx-auto mb-4"
+                onError={(e) => {
+                  e.target.src = "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80";
+                }}
               />
-              <h2 className="text-xl font-semibold text-gray-900">{student.name}</h2>
-              <p className="text-gray-600 mb-1">{student.course} • {student.year}</p>
-              <p className="text-sm text-gray-500 mb-4">{student.university}</p>
-              
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="text-center p-2 bg-gray-50 rounded-lg">
-                  <div className="font-semibold text-gray-900">{student.studentId}</div>
-                  <div className="text-gray-500 text-xs">Student ID</div>
-                </div>
-                <div className="text-center p-2 bg-gray-50 rounded-lg">
-                  <div className="font-semibold text-gray-900">{student.status}</div>
-                  <div className="text-gray-500 text-xs">Status</div>
-                </div>
-              </div>
+              <h2 className="text-xl font-semibold text-gray-900">{student?.name || "Student Name"}</h2>
+              <p className="text-gray-600 mb-1">{student?.course || "Not specified"} • {student?.year || "Not specified"}</p>
+              <p className="text-sm text-gray-500 mb-4">{student?.university || "Not specified"}</p>
             </div>
 
             <div className="mt-6 space-y-3">
+              {/* Bio */}
+              {student?.bio && student.bio !== "Not specified" && (
+                <div className="text-sm">
+                  <div className="font-medium text-gray-700 mb-1">About</div>
+                  <p className="text-gray-600 text-sm leading-relaxed">{student.bio}</p>
+                </div>
+              )}
+
+              {/* Email */}
               <div className="flex items-center text-sm">
                 <span className="w-6 text-gray-400">📧</span>
-                <span className="text-gray-600">{student.email}</span>
+                <span className="text-gray-600">{student?.email || "No email provided"}</span>
               </div>
+
+              {/* Address */}
+              {student?.address && student.address !== "Not specified" && (
+                <div className="flex items-center text-sm">
+                  <span className="w-6 text-gray-400">📍</span>
+                  <span className="text-gray-600">{student.address}</span>
+                </div>
+              )}
+
+              {/* Join Date */}
               <div className="flex items-center text-sm">
                 <span className="w-6 text-gray-400">📅</span>
-                <span className="text-gray-600">Joined {student.joinDate}</span>
+                <span className="text-gray-600">Joined {student?.joinDate || "Unknown"}</span>
               </div>
             </div>
 
@@ -392,7 +555,6 @@ function DashboardPage() {
             </div>
           </div>
 
-
           {/* Upcoming Study Sessions */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
             <div className="p-6 border-b border-gray-200">
@@ -443,95 +605,51 @@ function DashboardPage() {
         </div>
       </div>
 
-      {/* Study Progress */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-        <h3 className="font-semibold text-gray-900 mb-4">Study Progress</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="text-center">
-            <div className="relative inline-block">
-              <svg className="w-20 h-20" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="3"
-                />
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#10B981"
-                  strokeWidth="3"
-                  strokeDasharray="75, 100"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-900">75%</span>
+      {/* Recent Activity */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+        <div className="p-6 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-900">Recent Activity</h3>
+          <p className="text-sm text-gray-500">Your latest interactions and contributions</p>
+        </div>
+        <div className="p-6">
+          <div className="space-y-4">
+            {[
+              {
+                id: 1,
+                type: "study_group",
+                title: "Joined Calculus Study Group",
+                description: "You joined the Calculus 101 study group",
+                time: "2 hours ago",
+                icon: "👥"
+              },
+              {
+                id: 2,
+                type: "resource",
+                title: "Uploaded Physics Notes",
+                description: "You shared Physics Formula Sheet with the community",
+                time: "1 day ago",
+                icon: "📚"
+              },
+              {
+                id: 3,
+                type: "forum",
+                title: "Posted in Forum",
+                description: "You asked about upcoming workshop schedule",
+                time: "2 days ago",
+                icon: "💬"
+              }
+            ].map((activity) => (
+              <div key={activity.id} className="flex items-center gap-4 p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
+                <div className="w-10 h-10 bg-gray-100 rounded-xl flex items-center justify-center text-lg">
+                  {activity.icon}
+                </div>
+                <div className="flex-1">
+                  <div className="font-medium text-gray-900">{activity.title}</div>
+                  <div className="text-sm text-gray-600">{activity.description}</div>
+                  <div className="text-xs text-gray-400 mt-1">{activity.time}</div>
+                </div>
               </div>
-            </div>
-            <div className="mt-2 font-medium text-gray-900">Mathematics</div>
-            <div className="text-sm text-gray-500">12/16 topics completed</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="relative inline-block">
-              <svg className="w-20 h-20" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="3"
-                />
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#3B82F6"
-                  strokeWidth="3"
-                  strokeDasharray="60, 100"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-900">60%</span>
-              </div>
-            </div>
-            <div className="mt-2 font-medium text-gray-900">Programming</div>
-            <div className="text-sm text-gray-500">9/15 topics completed</div>
-          </div>
-          
-          <div className="text-center">
-            <div className="relative inline-block">
-              <svg className="w-20 h-20" viewBox="0 0 36 36">
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#E5E7EB"
-                  strokeWidth="3"
-                />
-                <path
-                  d="M18 2.0845
-                    a 15.9155 15.9155 0 0 1 0 31.831
-                    a 15.9155 15.9155 0 0 1 0 -31.831"
-                  fill="none"
-                  stroke="#8B5CF6"
-                  strokeWidth="3"
-                  strokeDasharray="45, 100"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-lg font-bold text-gray-900">45%</span>
-              </div>
-            </div>
-            <div className="mt-2 font-medium text-gray-900">Database Systems</div>
-            <div className="text-sm text-gray-500">6/13 topics completed</div>
+            ))}
           </div>
         </div>
       </div>
@@ -539,8 +657,7 @@ function DashboardPage() {
   );
 }
 
-
-// ----------- Resources Page ----------- //
+//-------Resources -------//
 function ResourcesPage() {
   const [documents, setDocuments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -548,78 +665,78 @@ function ResourcesPage() {
   const [filteredDocuments, setFilteredDocuments] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [showFilters, setShowFilters] = useState(false);
+  const { user } = useAuth();
 
-  // Mock database of existing resources
-  const mockDatabase = [
-    {
-      id: 1,
-      name: "Calculus Textbook.pdf",
-      type: "application/pdf",
-      size: 2500000,
-      uploadDate: "2023-09-15",
-      uploader: "Professor Smith",
-      downloads: 142,
-      url: "#",
-      category: "Mathematics"
-    },
-    {
-      id: 2,
-      name: "Physics Formula Sheet.docx",
-      type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      size: 180000,
-      uploadDate: "2023-10-05",
-      uploader: "Dr. Johnson",
-      downloads: 89,
-      url: "#",
-      category: "Physics"
-    },
-    {
-      id: 3,
-      name: "Chemistry Lab Report Template.xlsx",
-      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-      size: 95000,
-      uploadDate: "2023-09-28",
-      uploader: "Lab Assistant",
-      downloads: 67,
-      url: "#",
-      category: "Chemistry"
-    },
-    {
-      id: 4,
-      name: "Biology Presentation.pptx",
-      type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-      size: 3200000,
-      uploadDate: "2023-10-12",
-      uploader: "Student Council",
-      downloads: 54,
-      url: "#",
-      category: "Biology"
-    },
-    {
-      id: 5,
-      name: "Computer Science Cheat Sheet.pdf",
-      type: "application/pdf",
-      size: 120000,
-      uploadDate: "2023-10-08",
-      uploader: "CS Department",
-      downloads: 203,
-      url: "#",
-      category: "Computer Science"
-    }
-  ];
-
-  // Initialize with mock data
+  // Initialize with API data
   useEffect(() => {
-    setDocuments(mockDatabase);
-    setFilteredDocuments(mockDatabase);
+    fetchResources();
   }, []);
+
+  // Fetch resources from API
+  const fetchResources = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get("http://localhost:3000/api/resources/all", {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      console.log("API Response:", response.data);
+
+      if (response.data.success) {
+        const apiDocuments = response.data.data.map(resource => ({
+          id: resource.resource_id,
+          name: resource.file_name,
+          type: getMimeType(resource.file_type),
+          size: getFileSize(resource.file_path),
+          uploadDate: resource.uploaded_at,
+          uploader: resource.student ? 
+            `${resource.student.name || ''} ${resource.student.surname || ''}`.trim() : 
+            "Unknown User",
+          downloads: 0,
+          url: `http://localhost:3000/api/resources/download/${resource.resource_id}`,
+          category: resource.session?.module_name || "General",
+          description: resource.description || "No description",
+          student_id: resource.student_id,
+          isOwner: resource.student_id === user?.id
+        }));
+        
+        setDocuments(apiDocuments);
+        setFilteredDocuments(apiDocuments);
+      }
+    } catch (err) {
+      console.error("Error fetching resources:", err);
+      setDocuments([]);
+      setFilteredDocuments([]);
+    }
+  };
+
+  // Helper function to get MIME type from file extension
+  const getMimeType = (fileType) => {
+    const types = {
+      pdf: "application/pdf",
+      docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      doc: "application/msword",
+      xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      xls: "application/vnd.ms-excel",
+      pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      ppt: "application/vnd.ms-powerpoint",
+      csv: "text/csv"
+    };
+    return types[fileType?.toLowerCase()] || "application/octet-stream";
+  };
+
+  // Helper function to get file size
+  const getFileSize = (filePath) => {
+    return Math.floor(Math.random() * 5000000) + 100000;
+  };
 
   // Search and filter functionality
   useEffect(() => {
     const filtered = documents.filter(doc => {
       const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                            doc.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           doc.uploader.toLowerCase().includes(searchQuery.toLowerCase());
+                           doc.uploader.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                           (doc.description && doc.description.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesCategory = selectedCategory === "all" || doc.category === selectedCategory;
       
@@ -629,53 +746,67 @@ function ResourcesPage() {
     setFilteredDocuments(filtered);
   }, [searchQuery, selectedCategory, documents]);
 
-  // Allowed file types
-  const allowedFileTypes = [
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword',
-    'application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-powerpoint',
-    'application/vnd.openxmlformats-officedocument.presentationml.presentation'
-  ];
-
   // Handle file upload
   const handleFileUpload = async (e) => {
     const files = Array.from(e.target.files);
     if (files.length === 0) return;
 
-    const formData = new FormData();
-    files.forEach(file => formData.append("file", file));
-    formData.append("student_id", 1); // replace with actual student ID from auth
+    const token = localStorage.getItem("token");
+    const storedUser = localStorage.getItem("user");
+    const user = storedUser ? JSON.parse(storedUser) : null;
+    
+    console.log("=== FRONTEND UPLOAD DEBUG ===");
+    console.log("🔑 Token exists:", !!token);
+    console.log("👤 User from localStorage:", user);
+    console.log("📁 Files to upload:", files.map(f => ({
+      name: f.name,
+      type: f.type,
+      size: f.size
+    })));
 
     try {
       setUploading(true);
-      const res = await axios.post("http://localhost:5000/api/resources/upload", formData, {
-        headers: { "Content-Type": "multipart/form-data" }
+      
+      const file = files[0];
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("description", `Uploaded by ${user?.name || 'User'}`);
+      
+      console.log("🚀 Sending POST request to /api/resources/upload...");
+      
+      const response = await axios.post("http://localhost:3000/api/resources/upload", formData, {
+        headers: { 
+          "Content-Type": "multipart/form-data",
+          Authorization: `Bearer ${token}`
+        },
+        timeout: 30000,
       });
 
-      alert(res.data.message);
-
-      // Refresh the documents list after upload
-      const updatedRes = await axios.get("http://localhost:5000/api/resources");
-      const docs = updatedRes.data.map(doc => ({
-        id: doc.resource_id,
-        name: doc.resource_name,
-        type: "",
-        size: 0,
-        uploadDate: doc.uploaded_at,
-        uploader: doc.uploader,
-        downloads: 0,
-        url: `http://localhost:5000/${doc.file_path}`,
-        category: "General"
-      }));
-      setDocuments(docs);
-      setFilteredDocuments(docs);
-
+      console.log("✅ Upload successful! Response:", response.data);
+      alert("File uploaded successfully!");
+      
+      await fetchResources();
+      
     } catch (err) {
-      console.error(err);
-      alert("Upload failed");
+      console.error("❌ UPLOAD FAILED:", {
+        message: err.message,
+        code: err.code,
+        response: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText
+      });
+      
+      let errorMessage = "Upload failed. Please try again.";
+      
+      if (err.response?.data?.message) {
+        errorMessage = err.response.data.message;
+      } else if (err.code === 'NETWORK_ERROR') {
+        errorMessage = "Cannot connect to server. Please check if the backend is running.";
+      } else if (err.code === 'TIMEOUT_ERROR') {
+        errorMessage = "Request timeout. The server is taking too long to respond.";
+      }
+      
+      alert(`Upload failed: ${errorMessage}`);
     } finally {
       setUploading(false);
       e.target.value = '';
@@ -684,28 +815,93 @@ function ResourcesPage() {
 
   // Handle file deletion
   const handleDeleteFile = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this file?")) return;
+  if (!window.confirm("Are you sure you want to delete this file?")) return;
 
-    try {
-      await axios.delete(`http://localhost:5000/api/resources/${id}`);
-      setDocuments(prev => prev.filter(doc => doc.id !== id));
-      setFilteredDocuments(prev => prev.filter(doc => doc.id !== id));
-      alert("File deleted successfully");
-    } catch (err) {
-      console.error(err);
-      alert("Failed to delete file");
-    }
-  };
+  try {
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user"));
+    
+    console.log("🗑️ Delete attempt - Detailed:", {
+      resourceId: id,
+      currentUserId: user?.id,
+      currentUserName: user?.name,
+      tokenExists: !!token
+    });
+
+    // First, test ownership
+    await testOwnership(id);
+
+    // Then attempt delete
+    const response = await axios.delete(`http://localhost:3000/api/resources/${id}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    
+    console.log("✅ Delete successful:", response.data);
+    
+    // Update local state
+    setDocuments(prev => prev.filter(doc => doc.id !== id));
+    setFilteredDocuments(prev => prev.filter(doc => doc.id !== id));
+    alert("File deleted successfully");
+    
+  } catch (err) {
+    console.error("❌ Delete failed - Full details:", {
+      message: err.message,
+      status: err.response?.status,
+      data: err.response?.data,
+      user: JSON.parse(localStorage.getItem("user"))
+    });
+    
+    const errorMessage = err.response?.data?.message || "Failed to delete file";
+    const debugInfo = err.response?.data?.debug ? ` (Debug: ${JSON.stringify(err.response.data.debug)})` : '';
+    
+    alert(`Delete failed: ${errorMessage}${debugInfo}`);
+  }
+};
 
   // Handle download
-  const handleDownload = (doc) => {
+  // Fix the handleDownload function in your ResourcesPage
+const handleDownload = async (doc) => {
+  try {
+    const token = localStorage.getItem("token");
+    console.log("📥 Download attempt:", {
+      documentId: doc.id,
+      documentName: doc.name,
+      tokenExists: !!token
+    });
+
+    // Method 1: Direct download with authorization header
+    const response = await axios.get(doc.url, {
+      headers: { 
+        Authorization: `Bearer ${token}` 
+      },
+      responseType: 'blob'
+    });
+
+    // Create download link
+    const url = window.URL.createObjectURL(new Blob([response.data]));
     const link = document.createElement('a');
-    link.href = doc.url;
+    link.href = url;
     link.download = doc.name;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-  };
+    window.URL.revokeObjectURL(url);
+
+    console.log("✅ Download successful");
+
+  } catch (err) {
+    console.error("❌ Download error:", err);
+    
+    // Method 2: Fallback - open in new tab with token
+    if (err.response?.status === 403) {
+      console.log("🔄 Trying fallback download method...");
+      const downloadUrl = `${doc.url}?token=${token}`;
+      window.open(downloadUrl, '_blank');
+    } else {
+      alert("Failed to download file");
+    }
+  }
+};
 
   // Get file icon based on type
   const getFileIcon = (type) => {
@@ -713,7 +909,8 @@ function ResourcesPage() {
     if (type.includes('pdf')) return '';
     if (type.includes('excel') || type.includes('spreadsheet')) return '';
     if (type.includes('powerpoint') || type.includes('presentation')) return '';
-    return '';
+    if (type.includes('csv')) return '';
+    return '📁';
   };
 
   // Format file size
@@ -727,8 +924,12 @@ function ResourcesPage() {
 
   // Format date
   const formatDate = (dateString) => {
-    const options = { year: 'numeric', month: 'short', day: 'numeric' };
-    return new Date(dateString).toLocaleDateString(undefined, options);
+    try {
+      const options = { year: 'numeric', month: 'short', day: 'numeric' };
+      return new Date(dateString).toLocaleDateString(undefined, options);
+    } catch (error) {
+      return 'Invalid Date';
+    }
   };
 
   // Get all unique categories
@@ -736,25 +937,29 @@ function ResourcesPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <Card title="Resources" subtitle="Upload and manage your study materials">
+      <Card title="Study Resources" subtitle="Upload, share, and manage your study materials">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload Section */}
           <div className="lg:col-span-1">
             <div className="p-6 border-2 border-dashed border-gray-300 rounded-2xl text-center hover:border-blue-300 transition-colors">
               <div className="mb-4">
-                <FolderOpen size={48} className="mx-auto text-gray-400" />
+                <FolderOpen className="mx-auto text-gray-400 text-4xl" />
               </div>
-              <h3 className="font-semibold mb-2">Upload Documents</h3>
+              <h3 className="font-semibold mb-2 text-lg">Upload Documents</h3>
               <p className="text-sm text-gray-500 mb-4">
-                Supported formats: Word, PDF, Excel, PowerPoint
+                Supported formats: PDF, Word, Excel, PowerPoint, CSV
               </p>
               
-              <label className="cursor-pointer inline-block px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors">
+              <label className={`cursor-pointer inline-block px-6 py-3 rounded-lg transition-colors ${
+                uploading 
+                  ? 'bg-gray-400 text-white cursor-not-allowed' 
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}>
                 {uploading ? 'Uploading...' : 'Select Files'}
                 <input
                   type="file"
                   multiple
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv"
                   onChange={handleFileUpload}
                   className="hidden"
                   disabled={uploading}
@@ -770,32 +975,55 @@ function ResourcesPage() {
                 </div>
               )}
             </div>
+
+            {/* Quick Stats */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-800 mb-2">Quick Stats</h4>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total Files:</span>
+                  <span className="font-medium">{documents.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Your Files:</span>
+                  <span className="font-medium">
+                    {documents.filter(doc => doc.isOwner).length}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-700">Total Storage:</span>
+                  <span className="font-medium">
+                    {formatFileSize(documents.reduce((sum, doc) => sum + doc.size, 0))}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Documents List */}
           <div className="lg:col-span-2">
-            <Card title="Resource Library" subtitle="Browse and download study materials">
+            <Card title="Resource Library" subtitle="Browse and download study materials from your peers">
               {/* Search and Filter Bar */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-4">
+              <div className="flex flex-col sm:flex-row gap-4 mb-6">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Search by name, category, or uploader..."
+                    placeholder="Search by name, category, uploader, or description..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
                   />
                 </div>
                 
                 <div className="relative">
                   <button 
                     onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                   >
-                    <Filter className="w-4 h-4" />
+                    <Filter />
                     <span>Filter</span>
-                    <ChevronDown className="w-4 h-4" />
+                    <ChevronDown />
                   </button>
                   
                   {showFilters && (
@@ -812,7 +1040,7 @@ function ResourcesPage() {
                           }}
                           className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
                             selectedCategory === category 
-                              ? 'text-blue-600 bg-blue-50' 
+                              ? 'text-blue-600 bg-blue-50 font-medium' 
                               : 'text-gray-700'
                           }`}
                         >
@@ -828,22 +1056,22 @@ function ResourcesPage() {
               {(searchQuery || selectedCategory !== 'all') && (
                 <div className="flex flex-wrap gap-2 mb-4">
                   {searchQuery && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200">
                       Search: "{searchQuery}"
                       <button 
                         onClick={() => setSearchQuery("")}
-                        className="ml-2 hover:text-blue-600"
+                        className="ml-2 hover:text-blue-600 font-bold"
                       >
                         ×
                       </button>
                     </span>
                   )}
                   {selectedCategory !== 'all' && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 border border-green-200">
                       Category: {selectedCategory}
                       <button 
                         onClick={() => setSelectedCategory("all")}
-                        className="ml-2 hover:text-green-600"
+                        className="ml-2 hover:text-green-600 font-bold"
                       >
                         ×
                       </button>
@@ -853,69 +1081,79 @@ function ResourcesPage() {
               )}
 
               {/* Results Count */}
-              <div className="mb-4 text-sm text-gray-600">
-                Showing {filteredDocuments.length} of {documents.length} resources
-                {selectedCategory !== 'all' && ` in ${selectedCategory}`}
+              <div className="mb-6 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                <span className="font-medium">
+                  Showing {filteredDocuments.length} of {documents.length} resources
+                  {selectedCategory !== 'all' && ` in ${selectedCategory}`}
+                </span>
               </div>
 
               {filteredDocuments.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl">
-                  <FolderOpen size={48} className="mx-auto mb-4 opacity-50" />
-                  <p className="text-gray-500 mb-2">No resources found</p>
+                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
+                  <FolderOpen className="mx-auto mb-4 opacity-50 text-4xl" />
+                  <p className="text-gray-500 mb-2 text-lg">No resources found</p>
                   <p className="text-sm text-gray-400">
                     {searchQuery || selectedCategory !== 'all' 
                       ? "Try adjusting your search or filters" 
-                      : "Upload your first file to get started"
+                      : "Be the first to upload a study resource!"
                     }
                   </p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {filteredDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all"
+                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all bg-white"
                     >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <span className="text-2xl flex-shrink-0">{getFileIcon(doc.type)}</span>
+                      <div className="flex items-center gap-4 flex-1 min-w-0">
+                        <span className="text-3xl flex-shrink-0">{getFileIcon(doc.type)}</span>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-medium text-sm truncate">{doc.name}</h4>
-                          <div className="flex flex-wrap gap-2 mt-1">
-                            <span className="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">
+                          <h4 className="font-semibold text-gray-900 truncate">{doc.name}</h4>
+                          {doc.description && doc.description !== "No description" && (
+                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{doc.description}</p>
+                          )}
+                          <div className="flex flex-wrap gap-3 mt-2">
+                            <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                               {doc.category}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               {formatFileSize(doc.size)}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               By {doc.uploader}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               {formatDate(doc.uploadDate)}
                             </span>
                           </div>
-                          <div className="mt-1 flex items-center text-xs text-gray-500">
-                            <Download className="w-3 h-3 mr-1" />
+                          <div className="mt-2 flex items-center text-xs text-gray-500">
+                            <Download className="mr-1" />
                             {doc.downloads} downloads
+                            {doc.isOwner && (
+                              <span className="ml-3 px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                                Your file
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 flex-shrink-0">
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-4">
                         <button
                           onClick={() => handleDownload(doc)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
                           title="Download"
                         >
-                          <Download className="w-5 h-5" />
+                          <Download />
                         </button>
-                        {doc.uploader === "You" && (
+                        {doc.isOwner && (
                           <button
                             onClick={() => handleDeleteFile(doc.id)}
-                            className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors"
+                            className="p-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-gray-200"
                             title="Delete"
                           >
-                            <Trash2 className="w-5 h-5" />
+                            <Trash2 />
                           </button>
                         )}
                       </div>
@@ -925,23 +1163,23 @@ function ResourcesPage() {
               )}
 
               {/* Storage Info */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Storage Usage</span>
-                  <span className="font-medium">
+              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between text-sm mb-2">
+                  <span className="text-blue-800 font-medium">Community Storage</span>
+                  <span className="font-bold text-blue-900">
                     {formatFileSize(documents.reduce((sum, doc) => sum + doc.size, 0))} used
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
+                <div className="w-full bg-blue-200 rounded-full h-3">
                   <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-500"
                     style={{ 
                       width: `${Math.min((documents.reduce((sum, doc) => sum + doc.size, 0) / (100 * 1024 * 1024)) * 100, 100)}%` 
                     }}
                   ></div>
                 </div>
-                <p className="text-xs text-gray-500 mt-2">
-                  All files are securely stored and accessible from any device
+                <p className="text-xs text-blue-700 mt-2">
+                  Sharing knowledge helps everyone learn better. Keep contributing! 📚
                 </p>
               </div>
             </Card>
@@ -1783,28 +2021,29 @@ function ForumPage() {
 
 
 // ---------- Settings Page ----------
-
 function SettingsPage() {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState("profile");
   const [preview, setPreview] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [saveStatus, setSaveStatus] = useState("");
   const [errors, setErrors] = useState({});
+  const [studentData, setStudentData] = useState(null);
 
   // Form state
   const [profileForm, setProfileForm] = useState({
-    firstName: "Student",
-    lastName: "Name",
-    bio: "Computer Science student passionate about technology and innovation.",
-    university: "University of Technology",
-    course: "Computer Science",
-    yearOfStudy: "3",
-    address: "123 University Ave, Campus Town",
+    firstName: "",
+    lastName: "",
+    bio: "",
+    university: "",
+    course: "",
+    yearOfStudy: "",
+    address: "",
   });
 
   const [accountForm, setAccountForm] = useState({
-    email: "student@university.edu",
+    email: "",
     currentPassword: "",
     newPassword: "",
     confirmPassword: "",
@@ -1817,6 +2056,65 @@ function SettingsPage() {
     eventUpdates: true,
     theme: "light",
   });
+
+  // Fetch student data on component mount
+  useEffect(() => {
+    fetchStudentData();
+  }, [user]);
+
+  const fetchStudentData = async () => {
+    try {
+      const token = localStorage.getItem("token");
+      const response = await axios.get(`http://localhost:3000/api/students/${user?.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        const data = response.data.data;
+        setStudentData(data);
+        
+        // Split full name into first and last name
+        const nameParts = data.name.split(' ');
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
+
+        setProfileForm({
+          firstName: firstName,
+          lastName: lastName,
+          bio: data.bio || "Computer Science student passionate about technology and innovation.",
+          university: data.university || "University of Technology",
+          course: data.course || "Computer Science",
+          yearOfStudy: data.year ? data.year.replace(' Year', '') : "3",
+          address: data.address || "123 University Ave, Campus Town",
+        });
+
+        setAccountForm(prev => ({
+          ...prev,
+          email: data.email || "student@university.edu"
+        }));
+
+        if (data.image && data.image !== "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80") {
+          setPreview(data.image);
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      // Set default data if API fails
+      setProfileForm({
+        firstName: "Student",
+        lastName: "Name",
+        bio: "Computer Science student passionate about technology and innovation.",
+        university: "University of Technology",
+        course: "Computer Science",
+        yearOfStudy: "3",
+        address: "123 University Ave, Campus Town",
+      });
+      setAccountForm(prev => ({
+        ...prev,
+        email: user?.email || "student@university.edu"
+      }));
+    }
+  };
 
   // ---------- Handlers ----------
   const handleImageChange = (e) => {
@@ -1880,11 +2178,24 @@ function SettingsPage() {
     setSaveStatus("saving");
 
     try {
-      const formData = new FormData();
-      Object.entries(profileForm).forEach(([key, value]) => formData.append(key, value));
-      if (previewFile) formData.append("profile_image", previewFile);
-
       const token = localStorage.getItem("token");
+      const formData = new FormData();
+      
+      // Append profile data
+      formData.append("name", profileForm.firstName);
+      formData.append("surname", profileForm.lastName);
+      formData.append("bio", profileForm.bio);
+      formData.append("university", profileForm.university);
+      formData.append("course", profileForm.course);
+      formData.append("yos", profileForm.yearOfStudy);
+      formData.append("address", profileForm.address);
+      formData.append("email", accountForm.email);
+      
+      // Append profile image if changed
+      if (previewFile) {
+        formData.append("profile_image", previewFile);
+      }
+
       const response = await axios.put("http://localhost:3000/api/profile", formData, {
         headers: {
           "Content-Type": "multipart/form-data",
@@ -1892,16 +2203,33 @@ function SettingsPage() {
         },
       });
 
-      setSaveStatus("saved");
-      setErrors({});
-      if (response.data.profile_image && previewFile) {
-        setPreview(URL.createObjectURL(previewFile));
+      if (response.data.success) {
+        setSaveStatus("saved");
+        setErrors({});
+        
+        // Update local state with new data
+        if (response.data.student) {
+          const updatedStudent = response.data.student;
+          setStudentData(prev => ({
+            ...prev,
+            ...updatedStudent
+          }));
+        }
+
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Profile updated successfully!",
+          timer: 2000,
+          showConfirmButton: false
+        });
       }
     } catch (err) {
+      console.error("Profile update error:", err);
       Swal.fire({
         icon: "error",
         title: "Error",
-        text: err.response?.data?.error || "Something went wrong",
+        text: err.response?.data?.message || "Failed to update profile",
       });
     } finally {
       setIsLoading(false);
@@ -1920,13 +2248,48 @@ function SettingsPage() {
     setSaveStatus("saving");
 
     try {
-      // Simulated API call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setSaveStatus("saved");
-      setErrors({});
-      setAccountForm((prev) => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }));
+      const token = localStorage.getItem("token");
+      const updateData = {
+        email: accountForm.email,
+      };
+
+      // Only include password fields if changing password
+      if (accountForm.newPassword) {
+        updateData.currentPassword = accountForm.currentPassword;
+        updateData.newPassword = accountForm.newPassword;
+      }
+
+      const response = await axios.put("http://localhost:3000/api/profile", updateData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (response.data.success) {
+        setSaveStatus("saved");
+        setErrors({});
+        setAccountForm((prev) => ({ 
+          ...prev, 
+          currentPassword: "", 
+          newPassword: "", 
+          confirmPassword: "" 
+        }));
+
+        Swal.fire({
+          icon: "success",
+          title: "Success",
+          text: "Account settings updated successfully!",
+          timer: 2000,
+          showConfirmButton: false
+        });
+      }
     } catch (err) {
-      Swal.fire({ icon: "error", title: "Error", text: "Failed to update account" });
+      console.error("Account update error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: err.response?.data?.message || "Failed to update account settings",
+      });
     } finally {
       setIsLoading(false);
       setTimeout(() => setSaveStatus(""), 3000);
@@ -1936,23 +2299,56 @@ function SettingsPage() {
   const handleSavePreferences = async () => {
     setIsLoading(true);
     setSaveStatus("saving");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setIsLoading(false);
-    setSaveStatus("saved");
-    setTimeout(() => setSaveStatus(""), 3000);
+    
+    try {
+      const token = localStorage.getItem("token");
+      
+      // Save preferences to backend (you'll need to create this endpoint)
+      await axios.put("http://localhost:3000/api/preferences", preferences, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      setSaveStatus("saved");
+      Swal.fire({
+        icon: "success",
+        title: "Success",
+        text: "Preferences saved successfully!",
+        timer: 2000,
+        showConfirmButton: false
+      });
+    } catch (err) {
+      console.error("Preferences save error:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to save preferences",
+      });
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setSaveStatus(""), 3000);
+    }
   };
 
   const handleResetForm = () => {
-    setProfileForm({
-      firstName: "Student",
-      lastName: "Name",
-      bio: "Computer Science student passionate about technology and innovation.",
-      university: "University of Technology",
-      course: "Computer Science",
-      yearOfStudy: "3",
-      address: "123 University Ave, Campus Town",
-    });
-    setPreview(null);
+    // Reset to original student data
+    if (studentData) {
+      const nameParts = studentData.name.split(' ');
+      const firstName = nameParts[0] || '';
+      const lastName = nameParts.slice(1).join(' ') || '';
+
+      setProfileForm({
+        firstName: firstName,
+        lastName: lastName,
+        bio: studentData.bio || "",
+        university: studentData.university || "",
+        course: studentData.course || "",
+        yearOfStudy: studentData.year ? studentData.year.replace(' Year', '') : "",
+        address: studentData.address || "",
+      });
+    }
+    setPreview(studentData?.image || null);
     setPreviewFile(null);
     setErrors({});
   };
@@ -1962,6 +2358,18 @@ function SettingsPage() {
     if (saveStatus === "saved") return "✓ Saved";
     return "Save Changes";
   };
+
+  // Loading state
+  if (!studentData && !profileForm.firstName) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-4"></div>
+          <div className="h-64 bg-gray-200 rounded"></div>
+        </div>
+      </div>
+    );
+  }
 
   // ---------- Render ----------
   return (
@@ -2016,7 +2424,7 @@ function SettingsPage() {
               <div className="flex items-center gap-6 p-6 border border-gray-200 rounded-2xl bg-white">
                 <div className="relative">
                   <img
-                    src={preview || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"}
+                    src={preview || studentData?.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"}
                     alt="Profile"
                     className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg"
                   />
