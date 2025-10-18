@@ -39,7 +39,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
   const handleSignup = async (e) => {
     e.preventDefault();
 
-    // Basic validations
+    // Validations
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       return;
@@ -50,6 +50,7 @@ export default function SignupModal({ open, onClose, goLogin }) {
     }
 
     setLoading(true);
+
     try {
       const response = await axios.post("http://localhost:3000/api/signup", {
         name,
@@ -58,27 +59,28 @@ export default function SignupModal({ open, onClose, goLogin }) {
         password,
       });
 
-      // Show success popup
-      await Swal.fire({
+      const { student_id, token } = response.data;
+
+      // Save user in context (including token)
+      login({
+        id: student_id,
+        name: `${name} ${surname}`,
+        role: "student",
+        token,
+      });
+
+      Swal.fire({
         icon: "success",
         title: "Signup Successful",
-        text: response.data.message || "Account created successfully!",
+        text: "Account created successfully!",
         confirmButtonColor: "#3085d6",
       });
 
-      // Save user in context
-      login({
-        id: response.data.student_id,
-        name: `${name} ${surname}`,
-        role: "student",
-      });
-
       handleClose();
-      navigate("/", { replace: true });
+      navigate("/studentdashboard", { replace: true });
     } catch (err) {
       const errorMsg = err.response?.data?.error || "Something went wrong";
 
-      // Show error popup
       Swal.fire({
         icon: "error",
         title: "Signup Failed",

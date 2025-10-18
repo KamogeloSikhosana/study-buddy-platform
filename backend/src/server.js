@@ -6,7 +6,8 @@ import fs from "fs";
 import db from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import profileRouter from "./routes/profile.js";
-import studyGroupsRouter from "./routes/studyGroups.js";
+import resourceRoutes from "./routes/resources.js";
+import studySessionsRouter from "./routes/studySessions.js"; // updated import
 
 const app = express();
 
@@ -45,11 +46,13 @@ app.get("/", async (req, res) => {
 // Routes
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRouter);
-app.use("/api/study-groups", studyGroupsRouter);
+app.use("/api/study-sessions", studySessionsRouter); // updated route path
+app.use("/api/resources", resourceRoutes);
 
-// Test route for study groups
-app.get("/api/test-study-groups", (req, res) => {
-  res.json({ message: "Study groups test route works!" });
+
+// Test route for study sessions
+app.get("/api/test-study-sessions", (req, res) => {
+  res.json({ message: "Study sessions test route works!" });
 });
 
 // 404 handler

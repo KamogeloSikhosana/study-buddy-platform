@@ -1,72 +1,89 @@
 import express from "express";
 import multer from "multer";
 import bcrypt from "bcrypt";
-import db from "../config/db.js";
-import fs from "fs";
+import prisma from "../prismaClient.js";
 import path from "path";
-import { authMiddleware } from "../middleware/auth.js";
+import fs from "fs";
+import { authenticateToken } from "../middleware/auth.js";
 
 const router = express.Router();
 
+// -----------------------------
 // Ensure uploads folder exists
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir);
+// -----------------------------
+const uploadsDir = path.join(process.cwd(), "uploads", "profile_images");
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 
-// Configure multer
+// -----------------------------
+// Multer config
+// -----------------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = file.originalname.split(".").pop();
-    cb(null, file.fieldname + "-" + uniqueSuffix + "." + ext);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   },
 });
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB limit
 
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } }); // 5MB
-
-// Update profile route
-router.put("/", authMiddleware, upload.single("profile_image"), async (req, res) => {
+// -----------------------------
+// Update student profile
+// -----------------------------
+router.put("/", authenticateToken, upload.single("profile_image"), async (req, res) => {
   try {
-    const studentId = req.user.id;
-    const { firstName, lastName, bio, university, course, yearOfStudy, address, email, currentPassword, newPassword } = req.body;
+    const studentId = req.user.id; // student_id from JWT
+    const {
+      name,
+      surname,
+      bio,
+      university,
+      course,
+      yos,
+      address,
+      email,
+      currentPassword,
+      newPassword,
+    } = req.body;
 
-    // Update password if requested
+    const updateData = {};
+
+    // Only include fields that are explicitly provided
+    const fields = { name, surname, bio, university, course, yos, address, email };
+    Object.keys(fields).forEach(key => {
+      if (fields[key] !== undefined && fields[key] !== null) {
+        updateData[key] = fields[key];
+      }
+    });
+
+    // Profile image
+    if (req.file) updateData.profile_image = req.file.path;
+
+    // Handle password update
     if (newPassword) {
-      if (!currentPassword) return res.status(400).json({ error: "Current password required" });
+      if (!currentPassword) {
+        return res.status(400).json({ success: false, message: "Current password required to change password" });
+      }
 
-      const [user] = await db.query("SELECT password FROM Students WHERE student_id = ?", [studentId]);
-      if (!user.length) return res.status(404).json({ error: "User not found" });
+      const student = await prisma.students.findUnique({ where: { student_id: studentId } });
+      if (!student) return res.status(404).json({ success: false, message: "Student not found" });
 
-      const isMatch = await bcrypt.compare(currentPassword, user[0].password);
-      if (!isMatch) return res.status(400).json({ error: "Current password incorrect" });
+      const isMatch = await bcrypt.compare(currentPassword, student.password);
+      if (!isMatch) return res.status(400).json({ success: false, message: "Current password is incorrect" });
 
       const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await db.query("UPDATE Students SET password = ? WHERE student_id = ?", [hashedPassword, studentId]);
+      updateData.password = hashedPassword;
     }
 
-    // Handle profile image
-    const image = req.file ? req.file.filename : null;
+    // Update student in DB only with provided fields
+    const updatedStudent = await prisma.students.update({
+      where: { student_id: studentId },
+      data: updateData,
+    });
 
-    // Update profile fields
-    await db.query(
-      `UPDATE Students 
-       SET name = ?, 
-           surname = ?, 
-           bio = ?, 
-           university = ?, 
-           course = ?, 
-           yos = ?, 
-           address = ?, 
-           email = ?, 
-           profile_image = COALESCE(?, profile_image) 
-       WHERE student_id = ?`,
-      [firstName, lastName, bio, university, course, yearOfStudy, address, email, image, studentId]
-    );
-
-    res.json({ message: "Profile updated successfully", profile_image: image });
+    res.json({ success: true, message: "Profile updated successfully", student: updatedStudent });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ success: false, message: "Server error" });
   }
 });
 
