@@ -6,9 +6,10 @@ import fs from "fs";
 import db from "./config/db.js";
 import authRoutes from "./routes/auth.js";
 import profileRouter from "./routes/profile.js";
-import studentRoutes from "./routes/students.js"; // ADD THIS IMPORT
+import studentRoutes from "./routes/students.js";
 import resourceRoutes from "./routes/resources.js";
-import studySessionsRouter from "./routes/studySessions.js"; 
+import studySessionsRouter from "./routes/studySessions.js";
+import taskRoutes from "./routes/tasks.js"; // ADD THIS IMPORT
 
 const app = express();
 
@@ -16,7 +17,7 @@ const app = express();
 app.use(cors({
   origin: 'http://localhost:5173',
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization', 'Origin', 'Accept']
 }));
 
@@ -46,9 +47,10 @@ app.get("/", async (req, res) => {
 // Routes
 app.use("/api", authRoutes);
 app.use("/api/profile", profileRouter);
-app.use("/api/students", studentRoutes); // ADD THIS LINE
-app.use("/api/study-sessions", studySessionsRouter); 
+app.use("/api/students", studentRoutes);
+app.use("/api/study-sessions", studySessionsRouter);
 app.use("/api/resources", resourceRoutes);
+app.use("/api/tasks", taskRoutes); 
 
 // 404 handler
 app.use((req, res) => {

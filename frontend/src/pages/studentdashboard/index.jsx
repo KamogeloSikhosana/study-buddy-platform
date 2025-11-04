@@ -32,6 +32,12 @@ import {
   LockIcon ,
   SettingsIcon ,
   CameraIcon,
+   Calendar, 
+  Clock, 
+  MoreVertical, 
+  CheckCircle,
+  Circle,
+  AlertCircle
 } from "lucide-react";
 
 // Theme colors
@@ -63,6 +69,7 @@ function Sidebar({ page, setPage, onLogout }) {
     { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },,
     { key: "study-circle", label: "Study Circle", icon: <BookOpen size={18} /> },
     { key: "resources", label: "Resources", icon: <FolderOpen size={18} /> },
+    { key: "scheduler", label: "Task Scheduler", icon: <Calendar size={18} /> },
     { key: "forum", label: "Forum", icon: <MessageSquare size={18} /> },
     { key: "settings", label: "Settings", icon: <Settings size={18} /> },
   ];
@@ -115,6 +122,651 @@ function Sidebar({ page, setPage, onLogout }) {
         </div>
       </div>
     </aside>
+  );
+}
+
+//======== TASK SCHEDULER =======//
+function TaskScheduler() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [tasks, setTasks] = useState([]);
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showAddTaskForm, setShowAddTaskForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [newTask, setNewTask] = useState({
+    title: "",
+    type: "TASK",
+    priority: "MEDIUM",
+    date: new Date().toISOString().split('T')[0],
+    time: "12:00",
+    description: ""
+  });
+
+  const { user } = useAuth();
+
+  // Use absolute URL to avoid proxy issues
+  const API_BASE_URL = 'http://localhost:3000';
+
+  // Fetch tasks from API
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      setLoading(true);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.get(`${API_BASE_URL}/api/tasks`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      if (response.data.success) {
+        setTasks(response.data.data);
+      }
+    } catch (error) {
+      console.error('Error fetching tasks:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      alert(`Error fetching tasks: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Navigation functions for calendar
+  const navigateMonth = (direction) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setMonth(prev.getMonth() + direction);
+      return newDate;
+    });
+  };
+
+  // Fixed date functions - use local timezone
+  const getTodayTasks = () => {
+    const today = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format
+    return tasks.filter(task => {
+      const taskDate = new Date(task.date).toLocaleDateString('en-CA');
+      return taskDate === today;
+    });
+  };
+
+  const getUpcomingTasks = () => {
+    const today = new Date().toLocaleDateString('en-CA');
+    return tasks
+      .filter(task => {
+        const taskDate = new Date(task.date).toLocaleDateString('en-CA');
+        return taskDate >= today && !task.completed;
+      })
+      .sort((a, b) => new Date(a.date) - new Date(b.date))
+      .slice(0, 5);
+  };
+
+  const getDaysInMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (date) => {
+    return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const addTask = async () => {
+    if (!newTask.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.post(`${API_BASE_URL}/api/tasks`, newTask, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.data.success) {
+        setTasks([...tasks, response.data.data]);
+        setNewTask({
+          title: "",
+          type: "TASK",
+          priority: "MEDIUM",
+          date: new Date().toISOString().split('T')[0],
+          time: "12:00",
+          description: ""
+        });
+        setShowAddTaskForm(false);
+        alert('Task created successfully!');
+        
+        // Refresh tasks list
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error('Error creating task:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      alert(`Error creating task: ${errorMessage}`);
+    }
+  };
+
+  const toggleTaskCompletion = async (taskId) => {
+    try {
+      const task = tasks.find(t => t.task_id === taskId);
+      const token = localStorage.getItem('token');
+      
+      const response = await axios.patch(`${API_BASE_URL}/api/tasks/${taskId}`, {
+        completed: !task.completed
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        setTasks(tasks.map(task => 
+          task.task_id === taskId ? { ...task, completed: !task.completed } : task
+        ));
+      }
+    } catch (error) {
+      console.error('Error updating task:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      alert(`Error updating task: ${errorMessage}`);
+    }
+  };
+
+  const deleteTask = async (taskId) => {
+    if (!confirm('Are you sure you want to delete this task?')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.delete(`${API_BASE_URL}/api/tasks/${taskId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      if (response.data.success) {
+        setTasks(tasks.filter(task => task.task_id !== taskId));
+        setSelectedTask(null);
+        alert('Task deleted successfully!');
+        
+        // Refresh tasks list
+        fetchTasks();
+      }
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      const errorMessage = error.response?.data?.error || error.response?.data?.message || error.message;
+      alert(`Error deleting task: ${errorMessage}`);
+    }
+  };
+
+  const getPriorityIcon = (priority) => {
+    switch (priority) {
+      case "HIGH":
+        return <AlertCircle size={16} className="text-red-500" />;
+      case "MEDIUM":
+        return <AlertCircle size={16} className="text-yellow-500" />;
+      case "LOW":
+        return <AlertCircle size={16} className="text-green-500" />;
+      default:
+        return null;
+    }
+  };
+
+  const getTypeColor = (type) => {
+    switch (type) {
+      case "MEETING":
+        return "bg-blue-100 text-blue-800 border-blue-200";
+      case "CALLBACK":
+        return "bg-purple-100 text-purple-800 border-purple-200";
+      case "TASK":
+      default:
+        return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const getPriorityColor = (priority) => {
+    switch (priority) {
+      case "HIGH":
+        return "bg-red-500";
+      case "MEDIUM":
+        return "bg-yellow-500";
+      case "LOW":
+        return "bg-green-500";
+      default:
+        return "bg-gray-500";
+    }
+  };
+
+  // Generate calendar days - fixed timezone issue
+  const generateCalendarDays = () => {
+    const daysInMonth = getDaysInMonth(currentDate);
+    const firstDay = getFirstDayOfMonth(currentDate);
+    const days = [];
+    
+    // Previous month's days
+    const prevMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const daysInPrevMonth = getDaysInMonth(prevMonth);
+    
+    for (let i = firstDay - 1; i >= 0; i--) {
+      const day = daysInPrevMonth - i;
+      days.push({
+        date: new Date(prevMonth.getFullYear(), prevMonth.getMonth(), day),
+        isCurrentMonth: false
+      });
+    }
+    
+    // Current month's days
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push({
+        date: new Date(currentDate.getFullYear(), currentDate.getMonth(), i),
+        isCurrentMonth: true
+      });
+    }
+    
+    // Next month's days
+    const totalCells = 42; // 6 weeks
+    const nextMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 1);
+    for (let i = 1; days.length < totalCells; i++) {
+      days.push({
+        date: new Date(nextMonth.getFullYear(), nextMonth.getMonth(), i),
+        isCurrentMonth: false
+      });
+    }
+    
+    return days;
+  };
+
+  const calendarDays = generateCalendarDays();
+  
+  // Fixed today's date - use local timezone
+  const today = new Date();
+  const todayFormatted = today.toLocaleDateString('en-CA'); // YYYY-MM-DD
+  const todayCalendar = today.toDateString();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading tasks...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Scheduling</h1>
+          <p className="text-gray-600">Manage your tasks, meetings, and callbacks</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Calendar & Today's Tasks */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Calendar Section */}
+            <Card title={
+              <div className="flex items-center justify-between">
+                <span>Calendar</span>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => navigateMonth(-1)}
+                    className="p-1 hover:bg-gray-100 rounded-lg"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <span className="text-lg font-semibold">
+                    {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button
+                    onClick={() => navigateMonth(1)}
+                    className="p-1 hover:bg-gray-100 rounded-lg transform rotate-180"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                </div>
+              </div>
+            }>
+              <div className="grid grid-cols-7 gap-2 mb-4">
+                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                    {day}
+                  </div>
+                ))}
+                {calendarDays.map((day, i) => {
+                  const dateString = day.date.toLocaleDateString('en-CA');
+                  const dayTasks = tasks.filter(task => {
+                    const taskDate = new Date(task.date).toLocaleDateString('en-CA');
+                    return taskDate === dateString;
+                  });
+                  const isToday = day.date.toDateString() === todayCalendar;
+                  
+                  return (
+                    <div
+                      key={i}
+                      className={`min-h-20 p-1 rounded-lg border-2 flex flex-col ${
+                        day.isCurrentMonth 
+                          ? isToday 
+                            ? 'border-blue-500 bg-blue-50' 
+                            : 'border-gray-200 bg-white'
+                          : 'border-transparent bg-gray-50'
+                      } ${!day.isCurrentMonth ? 'text-gray-400' : ''}`}
+                    >
+                      <div className="text-sm font-medium mb-1">
+                        {day.date.getDate()}
+                      </div>
+                      <div className="flex-1 space-y-1">
+                        {dayTasks.slice(0, 3).map((task, idx) => (
+                          <div
+                            key={idx}
+                            className={`text-xs p-1 rounded border-l-2 ${getTypeColor(task.type)} ${getPriorityColor(task.priority)}`}
+                            style={{ borderLeftColor: 'currentColor' }}
+                          >
+                            <div className="truncate font-medium">{task.title}</div>
+                            <div className="text-xs opacity-75">{task.time}</div>
+                          </div>
+                        ))}
+                        {dayTasks.length > 3 && (
+                          <div className="text-xs text-gray-500 text-center">
+                            +{dayTasks.length - 3} more
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+
+            {/* Today's Tasks */}
+            <Card title="Today" subtitle={today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}>
+              <div className="space-y-3">
+                {getTodayTasks().map(task => (
+                  <div
+                    key={task.task_id}
+                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                      task.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <button
+                        onClick={() => toggleTaskCompletion(task.task_id)}
+                        className="flex-shrink-0"
+                      >
+                        {task.completed ? (
+                          <CheckCircle size={20} className="text-green-500" />
+                        ) : (
+                          <Circle size={20} className="text-gray-400" />
+                        )}
+                      </button>
+                      <div>
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(task.type)}`}>
+                            {task.type.toLowerCase()}
+                          </span>
+                          {getPriorityIcon(task.priority)}
+                        </div>
+                        <h3 className={`font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                          {task.title}
+                        </h3>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <Clock size={14} />
+                          <span>{task.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedTask(task)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                ))}
+                {getTodayTasks().length === 0 && (
+                  <div className="text-center py-8 text-gray-500">
+                    <Calendar size={48} className="mx-auto mb-2 opacity-50" />
+                    <p>No tasks scheduled for today</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Column - Upcoming Tasks & Add Task Button */}
+          <div className="space-y-6">
+            {/* Upcoming Tasks */}
+            <Card title="Upcoming Tasks" subtitle={`${getUpcomingTasks().length} upcoming items`}>
+              <div className="space-y-3">
+                {getUpcomingTasks().map(task => (
+                  <div
+                    key={task.task_id}
+                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                      <div>
+                        <h3 className="font-medium text-gray-900">{task.title}</h3>
+                        <div className="flex items-center space-x-2 text-sm text-gray-500">
+                          <Calendar size={12} />
+                          <span>{new Date(task.date).toLocaleDateString()}</span>
+                          <Clock size={12} />
+                          <span>{task.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedTask(task)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <MoreVertical size={16} />
+                    </button>
+                  </div>
+                ))}
+                {getUpcomingTasks().length === 0 && (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>No upcoming tasks</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            {/* Add Task Button */}
+            <button
+              onClick={() => setShowAddTaskForm(true)}
+              className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center space-x-2 transition-colors"
+            >
+              <Plus size={20} />
+              <span className="font-medium">Add New Task</span>
+            </button>
+
+            {/* Refresh Button */}
+            <button
+              onClick={fetchTasks}
+              className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+            >
+              Refresh Tasks
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Add Task Form Modal */}
+      {showAddTaskForm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Add New Task</h3>
+              <button
+                onClick={() => setShowAddTaskForm(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
+                <input
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter task title"
+                />
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                  <select
+                    value={newTask.type}
+                    onChange={(e) => setNewTask({...newTask, type: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="TASK">Task</option>
+                    <option value="MEETING">Meeting</option>
+                    <option value="CALLBACK">Call Back</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Priority</label>
+                  <select
+                    value={newTask.priority}
+                    onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="LOW">Low</option>
+                    <option value="MEDIUM">Medium</option>
+                    <option value="HIGH">High</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={newTask.date}
+                    onChange={(e) => setNewTask({...newTask, date: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input
+                    type="time"
+                    value={newTask.time}
+                    onChange={(e) => setNewTask({...newTask, time: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <textarea
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter task description"
+                  rows="3"
+                />
+              </div>
+
+              <div className="flex space-x-2 pt-2">
+                <button
+                  onClick={() => setShowAddTaskForm(false)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={addTask}
+                  disabled={!newTask.title.trim()}
+                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+                >
+                  Add Task
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Task Details</h3>
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <h4 className="font-medium text-gray-900">{selectedTask.title}</h4>
+                <div className="flex items-center space-x-2 mt-1">
+                  <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(selectedTask.type)}`}>
+                    {selectedTask.type.toLowerCase()}
+                  </span>
+                  {getPriorityIcon(selectedTask.priority)}
+                </div>
+              </div>
+              
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Calendar size={16} />
+                <span>{new Date(selectedTask.date).toLocaleDateString()}</span>
+              </div>
+              
+              <div className="flex items-center space-x-2 text-sm text-gray-600">
+                <Clock size={16} />
+                <span>{selectedTask.time}</span>
+              </div>
+
+              {selectedTask.description && (
+                <div>
+                  <h5 className="text-sm font-medium text-gray-700 mb-1">Description</h5>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                    {selectedTask.description}
+                  </p>
+                </div>
+              )}
+              
+              <div className="flex space-x-2 pt-4">
+                <button
+                  onClick={() => toggleTaskCompletion(selectedTask.task_id)}
+                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  {selectedTask.completed ? 'Mark Incomplete' : 'Mark Complete'}
+                </button>
+                <button
+                  onClick={() => deleteTask(selectedTask.task_id)}
+                  className="flex-1 bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -3757,6 +4409,8 @@ export default function App() {
         return <StudyCirclePage />;
       case "resources":
         return <ResourcesPage />;
+      case "scheduler":
+        return <TaskScheduler />;
       case "forum":
         return <ForumPage />;
       case "settings":

@@ -7,51 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// -------------------------------
-// MODELS
-// -------------------------------
-
-model Admins {
-  admin_id Int    @id @default(autoincrement())
-  email    String @unique(map: "Admin_email_key")
-  password String
-}
-
 model SessionMembers {
-  member_id  Int      @id @default(autoincrement())
-  session_id Int
-  student_id Int
-  joined_at  DateTime @default(now())
+  member_id  Int            @id @default(autoincrement())
+  session_id Int?
+  student_id Int?
+  joined_at  DateTime?
+  session    StudySessions? @relation(fields: [session_id], references: [session_id], onDelete: Cascade, map: "group_members_group_id_fkey")
+  student    Students?      @relation(fields: [student_id], references: [student_id], onDelete: Cascade, map: "group_members_student_id_fkey")
 
-  session StudySessions @relation(fields: [session_id], references: [session_id], onDelete: Cascade)
-  student Students      @relation(fields: [student_id], references: [student_id], onDelete: Cascade)
-
-  @@unique([session_id, student_id])
+  @@unique([session_id, student_id], map: "group_members_group_id_student_id_key")
+  @@index([student_id], map: "group_members_student_id_fkey")
   @@map("session_members")
 }
 
 model Students {
-  student_id    Int      @id @default(autoincrement())
-  name          String
-  surname       String
-  email         String   @unique(map: "Student_email_key")
-  address       String?
-  profile_image String?
-  bio           String?
-  university    String?
-  yos           String?
-  course        String?
-  password      String
-  created_at    DateTime @default(now())
+  student_id      Int              @id @default(autoincrement())
+  name            String
+  surname         String
+  email           String           @unique(map: "Student_email_key")
+  address         String?
+  profile_image   String?
+  bio             String?
+  university      String?
+  yos             String?
+  course          String?
+  password        String
+  created_at      DateTime         @default(now())
+  resources       Resource[]
+  session_members SessionMembers[]
+  study_sessions  StudySessions[]
+  tasks           tasks[]
 
-  study_sessions  StudySessions[] // Sessions created by the student
-  session_members SessionMembers[] // Sessions the student has joined
-  resources       Resource[] // <-- add this
+  @@map("students")
 }
 
 model StudySessions {
-  session_id       Int      @id @default(autoincrement())
-  student_id       Int
+  session_id       Int              @id @default(autoincrement())
+  student_id       Int?
   group_name       String
   module_name      String
   about            String?
@@ -60,28 +52,63 @@ model StudySessions {
   meeting_link     String?
   meeting_date     DateTime
   meeting_time     String
-  created_at       DateTime @default(now())
+  created_at       DateTime         @default(now())
+  resources        Resource[]
+  members          SessionMembers[]
+  student          Students?        @relation(fields: [student_id], references: [student_id], onDelete: Restrict, map: "StudyGroup_user_id_fkey")
 
-  student   Students         @relation(fields: [student_id], references: [student_id], map: "StudySession_student_id_fkey")
-  members   SessionMembers[]
-  resources Resource[] // <-- add this
-
-  @@index([student_id], map: "StudySession_student_id_fkey")
+  @@index([student_id], map: "StudyGroup_user_id_fkey")
   @@map("study_sessions")
 }
 
 model Resource {
-  resource_id Int      @id @default(autoincrement())
+  resource_id Int            @id @default(autoincrement())
   student_id  Int
   session_id  Int?
-  file_name   String
-  file_path   String
-  file_type   String
-  description String?
-  uploaded_at DateTime @default(now())
+  file_name   String         @db.VarChar(255)
+  file_path   String         @db.VarChar(255)
+  file_type   String         @db.VarChar(10)
+  description String?        @db.Text
+  uploaded_at DateTime?      @default(now()) @db.DateTime(0)
+  student     Students       @relation(fields: [student_id], references: [student_id], onDelete: NoAction, onUpdate: NoAction, map: "resources_ibfk_1")
+  session     StudySessions? @relation(fields: [session_id], references: [session_id], onDelete: NoAction, onUpdate: NoAction, map: "resources_ibfk_2")
 
-  student Students       @relation(fields: [student_id], references: [student_id])
-  session StudySessions? @relation(fields: [session_id], references: [session_id])
-
+  @@index([session_id], map: "session_id")
+  @@index([student_id], map: "student_id")
   @@map("resources")
+}
+
+model admins {
+  admin_id Int    @id @default(autoincrement())
+  email    String @unique(map: "Admin_email_key")
+  password String
+}
+
+model tasks {
+  task_id     Int             @id @default(autoincrement())
+  student_id  Int
+  title       String          @db.VarChar(255)
+  type        tasks_type?     @default(TASK)
+  priority    tasks_priority? @default(MEDIUM)
+  date        DateTime        @db.DateTime(0)
+  time        String          @db.VarChar(10)
+  description String?         @db.Text
+  completed   Boolean?        @default(false)
+  created_at  DateTime?       @default(now()) @db.Timestamp(0)
+  updated_at  DateTime?       @default(now()) @db.Timestamp(0)
+  students    Students        @relation(fields: [student_id], references: [student_id], onDelete: Cascade, onUpdate: NoAction, map: "tasks_ibfk_1")
+
+  @@index([student_id], map: "student_id")
+}
+
+enum tasks_type {
+  TASK
+  MEETING
+  CALLBACK
+}
+
+enum tasks_priority {
+  LOW
+  MEDIUM
+  HIGH
 }
