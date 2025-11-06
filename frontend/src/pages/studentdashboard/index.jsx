@@ -164,6 +164,7 @@ function Sidebar({ page, setPage, onLogout, isOpen, onToggle }) {
   );
 }
 
+
 //======== TASK SCHEDULER =======//
 function TaskScheduler() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -306,6 +307,10 @@ function TaskScheduler() {
         setTasks(tasks.map(task => 
           task.task_id === taskId ? { ...task, completed: !task.completed } : task
         ));
+        
+        // Show success message and close modal
+        alert(`✓ Task marked as ${!task.completed ? 'completed' : 'incomplete'} successfully!`);
+        setSelectedTask(null); // Close the modal
       }
     } catch (error) {
       console.error('Error updating task:', error);
@@ -3247,7 +3252,7 @@ function SettingsPage() {
                             className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                           >
                             <option value="">Select year</option>
-                            {[1, 2, 3, 4, 5].map((year) => (
+                            {[1, 2, 3, 4, 5, 6 , "Alumni"].map((year) => (
                               <option key={year} value={year}>
                                 Year {year}
                               </option>
@@ -3682,33 +3687,46 @@ function StudyCirclePage() {
 
   // Delete a group
   const handleDeleteGroup = async (groupId) => {
-  try {
-    const token = localStorage.getItem('token'); // or your token storage method
-    
-    const response = await fetch(`/api/study-groups/${groupId}`, {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}` // Make sure this is included
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Use the full API URL with your API_BASE_URL
+      const response = await fetch(`${API_BASE_URL}/${groupId}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      // Check if response is OK before parsing JSON
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Failed to delete group');
+      // Parse JSON response
+      const result = await response.json();
+      
+      if (result.success) {
+        // Show success message
+        alert('✅ Study group deleted successfully!');
+        
+        // Refresh the groups list
+        await fetchAllGroups();
+        await fetchMyGroups();
+        
+        // Close any open modals
+        setShowDetailsModal(false);
+        setShowEditModal(false);
+      } else {
+        throw new Error(result.message || 'Failed to delete group');
+      }
+      
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      alert(`❌ Error: ${error.message}`);
     }
-
-    const result = await response.json();
-    console.log('Group deleted successfully:', result);
-    
-    // Refresh the groups list or update state
-    fetchMyGroups();
-    
-  } catch (error) {
-    console.error('Error deleting group:', error);
-    alert(`Error: ${error.message}`);
-  }
-};
+  };
 
   // Join a group
   const joinGroup = async (groupId) => {
@@ -3793,6 +3811,7 @@ function StudyCirclePage() {
     const isMember = group.members?.includes(currentUser?.name);
     const isFull = (group.members?.length || 0) >= group.num_members;
     const availableSlots = group.num_members - (group.members?.length || 0);
+    const isOwner = group.user_id === currentUser?.id;
 
     return (
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all duration-200">
@@ -3837,6 +3856,7 @@ function StudyCirclePage() {
         {/* Actions */}
         {showActions && (
           <div className="flex gap-2 pt-4 border-t border-gray-100">
+            {/* View Details button - always visible */}
             <button
               onClick={() => viewGroupDetails(group)}
               className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
@@ -3844,7 +3864,8 @@ function StudyCirclePage() {
               View Details
             </button>
             
-            {isMyGroup ? (
+            {/* Show Edit/Delete only for group owner */}
+            {isOwner ? (
               <>
                 <button
                   onClick={() => {
@@ -3863,6 +3884,7 @@ function StudyCirclePage() {
                 </button>
               </>
             ) : (
+              // Show Join/Leave button for non-owners
               <button
                 onClick={() => toggleJoin(group.id)}
                 className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors border ${
@@ -4433,6 +4455,8 @@ function StudyCirclePage() {
             >
               Close
             </button>
+            
+            {/* Show Edit/Delete only for group owner */}
             {selectedGroup.user_id === currentUser.id ? (
               <>
                 <button
@@ -4453,6 +4477,7 @@ function StudyCirclePage() {
                 </button>
               </>
             ) : (
+              // Show Join/Leave button for non-owners
               <button
                 onClick={() => {
                   toggleJoin(selectedGroup.id);
