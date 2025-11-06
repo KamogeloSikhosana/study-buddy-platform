@@ -13,45 +13,30 @@ router.get("/user/:id", authenticateToken, async (req, res) => {
     
     console.log("🔍 Fetching study groups for user ID:", id);
 
-    // Try multiple table names since schema might vary
     let studyGroups = [];
     
     try {
-      // Try studyGroupMember table first
-      studyGroups = await prisma.studyGroupMember.findMany({
+      studyGroups = await prisma.sessionMembers.findMany({
         where: { student_id: Number(id) },
         include: {
-          studyGroup: true
+          session: true
         }
       });
       
-      console.log("✅ Found study groups via studyGroupMember:", studyGroups.length);
+      console.log("✅ Found study groups via sessionMembers:", studyGroups.length);
     } catch (memberError) {
-      console.log("❌ studyGroupMember table not found, trying study_group_members...");
-      
-      try {
-        // Try study_group_members table
-        studyGroups = await prisma.study_group_members.findMany({
-          where: { student_id: Number(id) },
-          include: {
-            study_group: true
-          }
-        });
-        console.log("✅ Found study groups via study_group_members:", studyGroups.length);
-      } catch (groupError) {
-        console.log("❌ No study group tables found, returning empty array");
-        studyGroups = [];
-      }
+      console.log("❌ Error fetching study groups:", memberError);
+      studyGroups = [];
     }
 
     const formattedGroups = studyGroups.map(member => {
-      const group = member.studyGroup || member.study_group;
+      const group = member.session;
       return {
-        id: group.group_id,
+        id: group.session_id,
         name: group.group_name,
-        description: group.description,
-        subject: group.subject,
-        memberCount: group.member_count
+        description: group.about,
+        subject: group.module_name,
+        memberCount: group.num_members
       };
     });
 
@@ -81,77 +66,59 @@ router.get("/upcoming/:id", authenticateToken, async (req, res) => {
     let sessions = [];
     
     try {
-      // Try to get study sessions with participants
       sessions = await prisma.studySessions.findMany({
         where: {
-          participants: {
+          members: {
             some: {
               student_id: Number(id)
             }
           },
-          session_date: {
+          meeting_date: {
             gte: today
           }
         },
         include: {
-          study_group: {
+          student: {
             select: { 
-              group_name: true 
+              name: true,
+              surname: true
             }
           },
-          participants: true
+          members: {
+            include: {
+              student: {
+                select: {
+                  name: true,
+                  surname: true
+                }
+              }
+            }
+          }
         },
         orderBy: { 
-          session_date: 'asc' 
+          meeting_date: 'asc' 
         },
         take: 5
       });
       
-      console.log("✅ Found sessions via studySessions:", sessions.length);
+      console.log("✅ Found sessions:", sessions.length);
     } catch (sessionError) {
-      console.log("❌ studySessions table not found, trying study_sessions...");
-      
-      try {
-        // Try study_sessions table
-        sessions = await prisma.study_sessions.findMany({
-          where: {
-            student_id: Number(id),
-            session_date: {
-              gte: today
-            }
-          },
-          include: {
-            study_group: {
-              select: { 
-                group_name: true 
-              }
-            }
-          },
-          orderBy: { 
-            session_date: 'asc' 
-          },
-          take: 5
-        });
-        console.log("✅ Found sessions via study_sessions:", sessions.length);
-      } catch (altError) {
-        console.log("❌ No session tables found, using mock data");
-        sessions = [];
-      }
+      console.log("❌ Error fetching sessions:", sessionError);
+      sessions = [];
     }
 
     const formattedSessions = sessions.map(session => ({
       id: session.session_id,
-      title: session.session_title || session.session_topic || "Study Session",
-      group: session.study_group?.group_name || "General Study",
-      date: session.session_date,
-      time: session.session_time,
-      duration: session.duration || "2 hours",
-      participants: session.participants?.length || session.max_participants || 0
+      title: session.group_name,
+      group: session.module_name || "General Study",
+      date: session.meeting_date,
+      time: session.meeting_time,
+      duration: "2 hours",
+      participants: session.members?.length || 0
     }));
 
     console.log("📊 Formatted sessions:", formattedSessions.length);
 
-    // If no sessions found, return mock data
     if (formattedSessions.length === 0) {
       console.log("📝 No sessions found, returning mock data");
       const mockSessions = [
@@ -187,7 +154,6 @@ router.get("/upcoming/:id", authenticateToken, async (req, res) => {
   } catch (err) {
     console.error("❌ Error fetching sessions:", err);
     
-    // Return mock data if there's any error
     const mockSessions = [
       {
         id: 1,
@@ -226,75 +192,45 @@ router.get("/", authenticateToken, async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    let sessions = [];
-    let totalCount = 0;
-
-    try {
-      // Try studySessions table first
-      [sessions, totalCount] = await Promise.all([
-        prisma.studySessions.findMany({
-          include: {
-            study_group: {
-              select: {
-                group_name: true,
-                description: true
-              }
-            },
-            participants: {
-              include: {
-                student: {
-                  select: {
-                    name: true,
-                    surname: true
-                  }
+    const [sessions, totalCount] = await Promise.all([
+      prisma.studySessions.findMany({
+        include: {
+          student: {
+            select: {
+              name: true,
+              surname: true
+            }
+          },
+          members: {
+            include: {
+              student: {
+                select: {
+                  name: true,
+                  surname: true
                 }
               }
             }
-          },
-          orderBy: {
-            session_date: 'asc'
-          },
-          skip,
-          take: limitNum
-        }),
-        prisma.studySessions.count()
-      ]);
-      console.log("✅ Using studySessions table");
-    } catch (error) {
-      console.log("❌ studySessions table not found, trying study_sessions...");
-      
-      // Try study_sessions table
-      [sessions, totalCount] = await Promise.all([
-        prisma.study_sessions.findMany({
-          include: {
-            study_group: {
-              select: {
-                group_name: true,
-                description: true
-              }
-            }
-          },
-          orderBy: {
-            session_date: 'asc'
-          },
-          skip,
-          take: limitNum
-        }),
-        prisma.study_sessions.count()
-      ]);
-      console.log("✅ Using study_sessions table");
-    }
+          }
+        },
+        orderBy: {
+          meeting_date: 'asc'
+        },
+        skip,
+        take: limitNum
+      }),
+      prisma.studySessions.count()
+    ]);
 
     const formattedSessions = sessions.map(session => ({
       id: session.session_id,
-      title: session.session_title || session.session_topic,
-      description: session.session_description,
-      date: session.session_date,
-      time: session.session_time,
-      duration: session.duration,
-      group: session.study_group?.group_name,
-      currentParticipants: session.participants?.length || 0,
-      maxParticipants: session.max_participants
+      title: session.group_name,
+      description: session.about,
+      date: session.meeting_date,
+      time: session.meeting_time,
+      duration: "2 hours",
+      group: session.module_name,
+      currentParticipants: session.members?.length || 0,
+      maxParticipants: session.num_members
     }));
 
     const totalPages = Math.ceil(totalCount / limitNum);
@@ -347,51 +283,16 @@ router.post("/", authenticateToken, async (req, res) => {
       });
     }
 
-    let newSession;
-    
-    try {
-      // Try studySessions table first
-      newSession = await prisma.studySessions.create({
-        data: {
-          study_group_id: Number(studyGroupId),
-          session_title: sessionTitle,
-          session_description: sessionDescription,
-          session_date: sessionDate,
-          session_time: sessionTime,
-          duration: duration,
-          max_participants: maxParticipants ? Number(maxParticipants) : 10
-        },
-        include: {
-          study_group: {
-            select: {
-              group_name: true
-            }
-          }
-        }
-      });
-    } catch (error) {
-      console.log("❌ studySessions table not found, trying study_sessions...");
-      
-      // Try study_sessions table
-      newSession = await prisma.study_sessions.create({
-        data: {
-          study_group_id: Number(studyGroupId),
-          session_topic: sessionTitle,
-          session_description: sessionDescription,
-          session_date: sessionDate,
-          session_time: sessionTime,
-          duration: duration,
-          max_participants: maxParticipants ? Number(maxParticipants) : 10
-        },
-        include: {
-          study_group: {
-            select: {
-              group_name: true
-            }
-          }
-        }
-      });
-    }
+    const newSession = await prisma.studySessions.create({
+      data: {
+        group_name: sessionTitle,
+        about: sessionDescription,
+        meeting_date: sessionDate,
+        meeting_time: sessionTime,
+        student_id: req.user.id,
+        num_members: maxParticipants ? Number(maxParticipants) : 10
+      }
+    });
 
     console.log("✅ Study session created successfully");
 
@@ -420,22 +321,12 @@ router.post("/:id/join", authenticateToken, async (req, res) => {
 
     console.log("👥 User", studentId, "joining session", id);
 
-    let session;
-    
-    try {
-      // Check if session exists and has space
-      session = await prisma.studySessions.findUnique({
-        where: { session_id: Number(id) },
-        include: {
-          participants: true
-        }
-      });
-    } catch (error) {
-      console.log("❌ studySessions table not found, trying study_sessions...");
-      session = await prisma.study_sessions.findUnique({
-        where: { session_id: Number(id) }
-      });
-    }
+    const session = await prisma.studySessions.findUnique({
+      where: { session_id: Number(id) },
+      include: {
+        members: true
+      }
+    });
 
     if (!session) {
       return res.status(404).json({
@@ -445,23 +336,12 @@ router.post("/:id/join", authenticateToken, async (req, res) => {
     }
 
     // Check if user is already participating
-    let existingParticipation;
-    try {
-      existingParticipation = await prisma.studySessionParticipants.findFirst({
-        where: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    } catch (error) {
-      console.log("❌ studySessionParticipants not found, trying session_participants...");
-      existingParticipation = await prisma.session_participants.findFirst({
-        where: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    }
+    const existingParticipation = await prisma.sessionMembers.findFirst({
+      where: {
+        session_id: Number(id),
+        student_id: studentId
+      }
+    });
 
     if (existingParticipation) {
       return res.status(400).json({
@@ -471,7 +351,7 @@ router.post("/:id/join", authenticateToken, async (req, res) => {
     }
 
     // Check if session is full
-    if (session.participants && session.participants.length >= session.max_participants) {
+    if (session.members && session.members.length >= session.num_members) {
       return res.status(400).json({
         success: false,
         message: "This study session is full"
@@ -479,22 +359,12 @@ router.post("/:id/join", authenticateToken, async (req, res) => {
     }
 
     // Add participant
-    try {
-      await prisma.studySessionParticipants.create({
-        data: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    } catch (error) {
-      console.log("❌ studySessionParticipants not found, trying session_participants...");
-      await prisma.session_participants.create({
-        data: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    }
+    await prisma.sessionMembers.create({
+      data: {
+        session_id: Number(id),
+        student_id: studentId
+      }
+    });
 
     console.log("✅ User joined session successfully");
 
@@ -523,22 +393,12 @@ router.delete("/:id/leave", authenticateToken, async (req, res) => {
     console.log("👥 User", studentId, "leaving session", id);
 
     // Remove participant
-    try {
-      await prisma.studySessionParticipants.deleteMany({
-        where: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    } catch (error) {
-      console.log("❌ studySessionParticipants not found, trying session_participants...");
-      await prisma.session_participants.deleteMany({
-        where: {
-          session_id: Number(id),
-          student_id: studentId
-        }
-      });
-    }
+    await prisma.sessionMembers.deleteMany({
+      where: {
+        session_id: Number(id),
+        student_id: studentId
+      }
+    });
 
     console.log("✅ User left session successfully");
 
@@ -563,38 +423,19 @@ router.get("/:id/participants", authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    let participants;
-    
-    try {
-      participants = await prisma.studySessionParticipants.findMany({
-        where: { session_id: Number(id) },
-        include: {
-          student: {
-            select: {
-              student_id: true,
-              name: true,
-              surname: true,
-              profile_image: true
-            }
+    const participants = await prisma.sessionMembers.findMany({
+      where: { session_id: Number(id) },
+      include: {
+        student: {
+          select: {
+            student_id: true,
+            name: true,
+            surname: true,
+            profile_image: true
           }
         }
-      });
-    } catch (error) {
-      console.log("❌ studySessionParticipants not found, trying session_participants...");
-      participants = await prisma.session_participants.findMany({
-        where: { session_id: Number(id) },
-        include: {
-          student: {
-            select: {
-              student_id: true,
-              name: true,
-              surname: true,
-              profile_image: true
-            }
-          }
-        }
-      });
-    }
+      }
+    });
 
     const formattedParticipants = participants.map(p => ({
       id: p.student.student_id,
@@ -616,4 +457,5 @@ router.get("/:id/participants", authenticateToken, async (req, res) => {
   }
 });
 
-export default router;
+// Use alternative export syntax to avoid any hidden character issues
+export { router as default };

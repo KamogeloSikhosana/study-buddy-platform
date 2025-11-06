@@ -13,12 +13,10 @@ export default function Footer() {
           <div className="flex items-center gap-3 mb-4">
             <img
               src="/src/assets/logo.png"
-              alt="Pukke Connect Logo"
+              alt="Study Buddy Logo"
               className="h-12 w-12 rounded-full ring-2 ring-gray-300/50"
             />
-            <span className="text-xl font-semibold">
-              Study <span className="text-blue-500">Buddy</span>
-            </span>
+            
           </div>
           <p className="text-sm text-gray-600 mb-4">
             Connecting students across South Africa to the perfect study partners and groups through smart tools and collaborative learning.
