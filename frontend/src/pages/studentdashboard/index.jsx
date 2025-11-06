@@ -1,6 +1,7 @@
 import React, { useState , useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import axios from "axios";
+import { useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard,
   Users,
@@ -31,6 +32,8 @@ import {
   UserIcon,
   LockIcon ,
   SettingsIcon ,
+  ChevronLeft ,
+  Menu ,
   CameraIcon,
    Calendar, 
   Clock, 
@@ -64,64 +67,100 @@ function Card({ title, subtitle, children }) {
 }
 
 // ----------- Sidebar ------------
-function Sidebar({ page, setPage, onLogout }) {
+function Sidebar({ page, setPage, onLogout, isOpen, onToggle }) {
   const nav = [
-    { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },,
-    { key: "study-circle", label: "Study Circle", icon: <BookOpen size={18} /> },
+    { key: "dashboard", label: "Dashboard", icon: <LayoutDashboard size={18} /> },
+    { key: "study-circle", label: "Study Sessions", icon: <BookOpen size={18} /> },
     { key: "resources", label: "Resources", icon: <FolderOpen size={18} /> },
-    { key: "scheduler", label: "Task Scheduler", icon: <Calendar size={18} /> },
+    { key: "scheduler", label: "Scheduler", icon: <Calendar size={18} /> },
     { key: "forum", label: "Forum", icon: <MessageSquare size={18} /> },
     { key: "settings", label: "Settings", icon: <Settings size={18} /> },
   ];
 
   return (
-    <aside className="fixed top-0 left-0 h-full w-64 z-40">
-      <div
-        className="flex flex-col h-full p-4 rounded-r-3xl"
-        style={{
-          background: "white",
-          borderRight: `1px solid ${colors.mist}`,
-        }}
-      >
-        {/* Logo */}
-        <div className="mb-8 px-2 flex items-center">
-          <img src="/src/assets/logo.png" alt="StudyBuddy logo" className="h-40 w-auto" />
-        </div>
-
-        {/* Navigation */}
-        <nav className="flex-1 space-y-1">
-          {nav.map((item) => (
+    <>
+      {/* Mobile Overlay */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={onToggle}
+        />
+      )}
+      
+      {/* Sidebar - Sticky and Full Height */}
+      <aside className={`
+        fixed top-0 left-0 h-screen w-64 z-50 transform transition-transform duration-300 ease-in-out
+        ${isOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:sticky lg:top-0 lg:translate-x-0 lg:z-auto lg:h-screen
+      `}>
+        <div className="flex flex-col h-full bg-white border-r border-gray-200">
+          {/* Header with bigger logo */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="flex items-center">
+              <img src="/src/assets/logo.png" alt="StudyBuddy logo" className="h-35 w-auto" /> {/* Bigger logo */}
+            </div>
             <button
-              key={item.key}
-              onClick={() => setPage(item.key)}
-              className={`w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-left transition ${
-                page === item.key
-                  ? "bg-gray-200 text-gray-900 shadow-sm"
-                  : "text-gray-700 hover:bg-gray-100"
-              }`}
+              onClick={onToggle}
+              className="lg:hidden p-1 rounded hover:bg-blue-50 text-blue-600"
             >
-              <div className="flex-shrink-0 text-gray-600">{item.icon}</div>
-              <span className="text-sm font-medium truncate">{item.label}</span>
+              <ChevronLeft size={18} />
             </button>
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div>
-          <div className="mb-4 p-3 rounded-2xl" style={{ background: colors.mist }}>
-            <div className="text-xs opacity-70 mb-1">Logged in as</div>
-            <div className="text-sm font-semibold">Student</div>
           </div>
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center gap-3 px-3 py-2 rounded-2xl text-left transition text-gray-700 hover:bg-red-100 hover:text-red-600"
-          >
-            <LogOut size={18} className="flex-shrink-0" />
-            <span className="text-sm font-medium">Logout</span>
-          </button>
+
+          {/* Navigation - Takes remaining space */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            {nav.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => {
+                  setPage(item.key);
+                  // Close sidebar on mobile after selection
+                  if (window.innerWidth < 1024) {
+                    onToggle();
+                  }
+                }}
+                className={`w-full flex items-center gap-3 px-3 py-3 rounded-lg text-left transition-all duration-200 ${
+                  page === item.key
+                    ? "bg-blue-500 text-white"
+                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                }`}
+              >
+                <div className={`flex-shrink-0 ${page === item.key ? 'text-white' : 'text-blue-500'}`}>
+                  {item.icon}
+                </div>
+                <span className="text-sm font-medium">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+
+          {/* Footer - Moved up with margin top */}
+          <div className="mt-auto p-3 border-t border-gray-200"> {/* mt-auto pushes it up */}
+            <div className="mb-3 p-3 rounded-lg bg-blue-50">
+              <div className="text-xs text-blue-600 opacity-80 mb-1">Logged in as</div>
+              <div className="text-sm font-semibold text-blue-800">Student</div>
+              <div className="text-xs text-blue-600 opacity-70">Taras Migulko</div>
+            </div>
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-left transition-all duration-200 text-gray-700 hover:bg-red-50 hover:text-red-600"
+            >
+              <LogOut size={16} className="flex-shrink-0" />
+              <span className="text-sm font-medium">Logout</span>
+            </button>
+          </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+
+      {/* Mobile toggle button - shows when sidebar is hidden */}
+      {!isOpen && (
+        <button
+          onClick={onToggle}
+          className="fixed top-3 left-3 z-50 lg:hidden p-2 bg-blue-500 text-white rounded-lg shadow hover:bg-blue-600 transition-colors"
+        >
+          <Menu size={16} />
+        </button>
+      )}
+    </>
   );
 }
 
@@ -306,11 +345,11 @@ function TaskScheduler() {
   const getPriorityIcon = (priority) => {
     switch (priority) {
       case "HIGH":
-        return <AlertCircle size={16} className="text-red-500" />;
+        return <AlertCircle size={14} className="text-red-500" />;
       case "MEDIUM":
-        return <AlertCircle size={16} className="text-yellow-500" />;
+        return <AlertCircle size={14} className="text-yellow-500" />;
       case "LOW":
-        return <AlertCircle size={16} className="text-green-500" />;
+        return <AlertCircle size={14} className="text-green-500" />;
       default:
         return null;
     }
@@ -338,6 +377,19 @@ function TaskScheduler() {
         return "bg-green-500";
       default:
         return "bg-gray-500";
+    }
+  };
+
+  // Get calendar task color based on type
+  const getCalendarTaskColor = (task) => {
+    switch (task.type) {
+      case "MEETING":
+        return "bg-blue-500 text-white border-blue-600";
+      case "CALLBACK":
+        return "bg-purple-500 text-white border-purple-600";
+      case "TASK":
+      default:
+        return "bg-red-500 text-white border-red-600";
     }
   };
 
@@ -391,8 +443,8 @@ function TaskScheduler() {
     return (
       <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading tasks...</p>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-3 text-gray-600 text-sm">Loading tasks...</p>
         </div>
       </div>
     );
@@ -402,40 +454,40 @@ function TaskScheduler() {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Scheduling</h1>
-          <p className="text-gray-600">Manage your tasks, meetings, and callbacks</p>
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">Scheduling</h1>
+          <p className="text-gray-600 text-sm">Manage your tasks, meetings, and callbacks</p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {/* Left Column - Calendar & Today's Tasks */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4">
             {/* Calendar Section */}
-            <Card title={
-              <div className="flex items-center justify-between">
-                <span>Calendar</span>
-                <div className="flex items-center space-x-2">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <span className="font-semibold text-gray-900">Calendar</span>
+                <div className="flex items-center space-x-1">
                   <button
                     onClick={() => navigateMonth(-1)}
-                    className="p-1 hover:bg-gray-100 rounded-lg"
+                    className="p-1 hover:bg-gray-100 rounded-lg text-sm"
                   >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={16} />
                   </button>
-                  <span className="text-lg font-semibold">
+                  <span className="text-base font-semibold">
                     {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
                   </span>
                   <button
                     onClick={() => navigateMonth(1)}
-                    className="p-1 hover:bg-gray-100 rounded-lg transform rotate-180"
+                    className="p-1 hover:bg-gray-100 rounded-lg transform rotate-180 text-sm"
                   >
-                    <ArrowLeft size={20} />
+                    <ArrowLeft size={16} />
                   </button>
                 </div>
               </div>
-            }>
-              <div className="grid grid-cols-7 gap-2 mb-4">
+              
+              <div className="grid grid-cols-7 gap-1 mb-3">
                 {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-gray-500 py-2">
+                  <div key={day} className="text-center text-xs font-medium text-gray-500 py-1">
                     {day}
                   </div>
                 ))}
@@ -450,7 +502,7 @@ function TaskScheduler() {
                   return (
                     <div
                       key={i}
-                      className={`min-h-20 p-1 rounded-lg border-2 flex flex-col ${
+                      className={`min-h-16 p-1 rounded-lg border flex flex-col ${
                         day.isCurrentMonth 
                           ? isToday 
                             ? 'border-blue-500 bg-blue-50' 
@@ -458,23 +510,21 @@ function TaskScheduler() {
                           : 'border-transparent bg-gray-50'
                       } ${!day.isCurrentMonth ? 'text-gray-400' : ''}`}
                     >
-                      <div className="text-sm font-medium mb-1">
+                      <div className="text-xs font-medium mb-1">
                         {day.date.getDate()}
                       </div>
-                      <div className="flex-1 space-y-1">
-                        {dayTasks.slice(0, 3).map((task, idx) => (
+                      <div className="flex-1 space-y-0.5">
+                        {dayTasks.slice(0, 2).map((task, idx) => (
                           <div
                             key={idx}
-                            className={`text-xs p-1 rounded border-l-2 ${getTypeColor(task.type)} ${getPriorityColor(task.priority)}`}
-                            style={{ borderLeftColor: 'currentColor' }}
+                            className={`text-xs p-0.5 rounded ${getCalendarTaskColor(task)}`}
                           >
                             <div className="truncate font-medium">{task.title}</div>
-                            <div className="text-xs opacity-75">{task.time}</div>
                           </div>
                         ))}
-                        {dayTasks.length > 3 && (
+                        {dayTasks.length > 2 && (
                           <div className="text-xs text-gray-500 text-center">
-                            +{dayTasks.length - 3} more
+                            +{dayTasks.length - 2} more
                           </div>
                         )}
                       </div>
@@ -482,80 +532,44 @@ function TaskScheduler() {
                   );
                 })}
               </div>
-            </Card>
+            </div>
 
             {/* Today's Tasks */}
-            <Card title="Today" subtitle={today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}>
-              <div className="space-y-3">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="mb-3">
+                <h2 className="font-semibold text-gray-900 text-base">Today</h2>
+                <p className="text-gray-600 text-xs">{today.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+              <div className="space-y-2">
                 {getTodayTasks().map(task => (
                   <div
                     key={task.task_id}
-                    className={`flex items-center justify-between p-3 rounded-lg border ${
+                    className={`flex items-center justify-between p-2 rounded-lg border ${
                       task.completed ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200'
                     }`}
                   >
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-2">
                       <button
                         onClick={() => toggleTaskCompletion(task.task_id)}
                         className="flex-shrink-0"
                       >
                         {task.completed ? (
-                          <CheckCircle size={20} className="text-green-500" />
+                          <CheckCircle size={16} className="text-green-500" />
                         ) : (
-                          <Circle size={20} className="text-gray-400" />
+                          <Circle size={16} className="text-gray-400" />
                         )}
                       </button>
                       <div>
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(task.type)}`}>
+                        <div className="flex items-center space-x-1">
+                          <span className={`text-xs px-1.5 py-0.5 rounded-full ${getTypeColor(task.type)}`}>
                             {task.type.toLowerCase()}
                           </span>
                           {getPriorityIcon(task.priority)}
                         </div>
-                        <h3 className={`font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                        <h3 className={`font-medium text-sm ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
                           {task.title}
                         </h3>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <Clock size={14} />
-                          <span>{task.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => setSelectedTask(task)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <MoreVertical size={16} />
-                    </button>
-                  </div>
-                ))}
-                {getTodayTasks().length === 0 && (
-                  <div className="text-center py-8 text-gray-500">
-                    <Calendar size={48} className="mx-auto mb-2 opacity-50" />
-                    <p>No tasks scheduled for today</p>
-                  </div>
-                )}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right Column - Upcoming Tasks & Add Task Button */}
-          <div className="space-y-6">
-            {/* Upcoming Tasks */}
-            <Card title="Upcoming Tasks" subtitle={`${getUpcomingTasks().length} upcoming items`}>
-              <div className="space-y-3">
-                {getUpcomingTasks().map(task => (
-                  <div
-                    key={task.task_id}
-                    className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(task.priority)}`}></div>
-                      <div>
-                        <h3 className="font-medium text-gray-900">{task.title}</h3>
-                        <div className="flex items-center space-x-2 text-sm text-gray-500">
-                          <Calendar size={12} />
-                          <span>{new Date(task.date).toLocaleDateString()}</span>
+                        <div className="flex items-center space-x-1 text-xs text-gray-500">
                           <Clock size={12} />
                           <span>{task.time}</span>
                         </div>
@@ -563,33 +577,77 @@ function TaskScheduler() {
                     </div>
                     <button
                       onClick={() => setSelectedTask(task)}
-                      className="text-gray-400 hover:text-gray-600"
+                      className="text-gray-400 hover:text-gray-600 text-sm"
                     >
-                      <MoreVertical size={16} />
+                      <MoreVertical size={14} />
+                    </button>
+                  </div>
+                ))}
+                {getTodayTasks().length === 0 && (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    <Calendar size={32} className="mx-auto mb-1 opacity-50" />
+                    <p>No tasks scheduled for today</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column - Upcoming Tasks & Add Task Button */}
+          <div className="space-y-4">
+            {/* Upcoming Tasks */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+              <div className="mb-3">
+                <h2 className="font-semibold text-gray-900 text-base">Upcoming Tasks</h2>
+                <p className="text-gray-600 text-xs">{getUpcomingTasks().length} upcoming items</p>
+              </div>
+              <div className="space-y-2">
+                {getUpcomingTasks().map(task => (
+                  <div
+                    key={task.task_id}
+                    className="flex items-center justify-between p-2 bg-white rounded-lg border border-gray-200"
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className={`w-1.5 h-1.5 rounded-full ${getPriorityColor(task.priority)}`}></div>
+                      <div>
+                        <h3 className="font-medium text-gray-900 text-sm">{task.title}</h3>
+                        <div className="flex items-center space-x-1 text-xs text-gray-500">
+                          <Calendar size={10} />
+                          <span>{new Date(task.date).toLocaleDateString()}</span>
+                          <Clock size={10} />
+                          <span>{task.time}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedTask(task)}
+                      className="text-gray-400 hover:text-gray-600 text-sm"
+                    >
+                      <MoreVertical size={14} />
                     </button>
                   </div>
                 ))}
                 {getUpcomingTasks().length === 0 && (
-                  <div className="text-center py-4 text-gray-500">
+                  <div className="text-center py-2 text-gray-500 text-sm">
                     <p>No upcoming tasks</p>
                   </div>
                 )}
               </div>
-            </Card>
+            </div>
 
             {/* Add Task Button */}
             <button
               onClick={() => setShowAddTaskForm(true)}
-              className="w-full bg-blue-500 text-white py-3 px-4 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 flex items-center justify-center space-x-2 transition-colors"
+              className="w-full bg-blue-500 text-white py-2 px-3 rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-1 focus:ring-blue-500 focus:ring-offset-1 flex items-center justify-center space-x-1 transition-colors text-sm"
             >
-              <Plus size={20} />
+              <Plus size={16} />
               <span className="font-medium">Add New Task</span>
             </button>
 
             {/* Refresh Button */}
             <button
               onClick={fetchTasks}
-              className="w-full bg-gray-500 text-white py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors"
+              className="w-full bg-gray-500 text-white py-1.5 px-3 rounded-lg hover:bg-gray-600 transition-colors text-sm"
             >
               Refresh Tasks
             </button>
@@ -600,36 +658,36 @@ function TaskScheduler() {
       {/* Add Task Form Modal */}
       {showAddTaskForm && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Add New Task</h3>
+          <div className="bg-white rounded-xl p-4 max-w-md w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-base font-semibold">Add New Task</h3>
               <button
                 onClick={() => setShowAddTaskForm(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 text-sm"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Title *</label>
                 <input
                   type="text"
                   value={newTask.title}
                   onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   placeholder="Enter task title"
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                   <select
                     value={newTask.type}
                     onChange={(e) => setNewTask({...newTask, type: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   >
                     <option value="TASK">Task</option>
                     <option value="MEETING">Meeting</option>
@@ -642,7 +700,7 @@ function TaskScheduler() {
                   <select
                     value={newTask.priority}
                     onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   >
                     <option value="LOW">Low</option>
                     <option value="MEDIUM">Medium</option>
@@ -651,14 +709,14 @@ function TaskScheduler() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
                   <input
                     type="date"
                     value={newTask.date}
                     onChange={(e) => setNewTask({...newTask, date: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   />
                 </div>
                 
@@ -668,7 +726,7 @@ function TaskScheduler() {
                     type="time"
                     value={newTask.time}
                     onChange={(e) => setNewTask({...newTask, time: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   />
                 </div>
               </div>
@@ -678,23 +736,23 @@ function TaskScheduler() {
                 <textarea
                   value={newTask.description}
                   onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-500 text-sm"
                   placeholder="Enter task description"
-                  rows="3"
+                  rows="2"
                 />
               </div>
 
               <div className="flex space-x-2 pt-2">
                 <button
                   onClick={() => setShowAddTaskForm(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 bg-gray-100 text-gray-700 py-1.5 px-3 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={addTask}
                   disabled={!newTask.title.trim()}
-                  className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 bg-blue-500 text-white py-1.5 px-3 rounded-lg hover:bg-blue-600 disabled:bg-blue-300 disabled:cursor-not-allowed transition-colors text-sm"
                 >
                   Add Task
                 </button>
@@ -707,57 +765,57 @@ function TaskScheduler() {
       {/* Task Detail Modal */}
       {selectedTask && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Task Details</h3>
+          <div className="bg-white rounded-xl p-4 max-w-md w-full">
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-base font-semibold">Task Details</h3>
               <button
                 onClick={() => setSelectedTask(null)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-400 hover:text-gray-600 text-sm"
               >
-                <X size={20} />
+                <X size={16} />
               </button>
             </div>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div>
-                <h4 className="font-medium text-gray-900">{selectedTask.title}</h4>
-                <div className="flex items-center space-x-2 mt-1">
-                  <span className={`text-xs px-2 py-1 rounded-full ${getTypeColor(selectedTask.type)}`}>
+                <h4 className="font-medium text-gray-900 text-sm">{selectedTask.title}</h4>
+                <div className="flex items-center space-x-1 mt-1">
+                  <span className={`text-xs px-1.5 py-0.5 rounded-full ${getTypeColor(selectedTask.type)}`}>
                     {selectedTask.type.toLowerCase()}
                   </span>
                   {getPriorityIcon(selectedTask.priority)}
                 </div>
               </div>
               
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Calendar size={16} />
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Calendar size={14} />
                 <span>{new Date(selectedTask.date).toLocaleDateString()}</span>
               </div>
               
-              <div className="flex items-center space-x-2 text-sm text-gray-600">
-                <Clock size={16} />
+              <div className="flex items-center space-x-1 text-xs text-gray-600">
+                <Clock size={14} />
                 <span>{selectedTask.time}</span>
               </div>
 
               {selectedTask.description && (
                 <div>
-                  <h5 className="text-sm font-medium text-gray-700 mb-1">Description</h5>
-                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+                  <h5 className="text-xs font-medium text-gray-700 mb-1">Description</h5>
+                  <p className="text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
                     {selectedTask.description}
                   </p>
                 </div>
               )}
               
-              <div className="flex space-x-2 pt-4">
+              <div className="flex space-x-2 pt-3">
                 <button
                   onClick={() => toggleTaskCompletion(selectedTask.task_id)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-200 transition-colors"
+                  className="flex-1 bg-gray-100 text-gray-700 py-1.5 px-3 rounded-lg hover:bg-gray-200 transition-colors text-sm"
                 >
                   {selectedTask.completed ? 'Mark Incomplete' : 'Mark Complete'}
                 </button>
                 <button
                   onClick={() => deleteTask(selectedTask.task_id)}
-                  className="flex-1 bg-red-100 text-red-700 py-2 px-4 rounded-lg hover:bg-red-200 transition-colors"
+                  className="flex-1 bg-red-100 text-red-700 py-1.5 px-3 rounded-lg hover:bg-red-200 transition-colors text-sm"
                 >
                   Delete
                 </button>
@@ -1489,93 +1547,88 @@ function ResourcesPage() {
 
   // Handle file deletion
   const handleDeleteFile = async (id) => {
-  if (!window.confirm("Are you sure you want to delete this file?")) return;
+    if (!window.confirm("Are you sure you want to delete this file?")) return;
 
-  try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user"));
-    
-    console.log("🗑️ Delete attempt - Detailed:", {
-      resourceId: id,
-      currentUserId: user?.id,
-      currentUserName: user?.name,
-      tokenExists: !!token
-    });
+    try {
+      const token = localStorage.getItem("token");
+      const user = JSON.parse(localStorage.getItem("user"));
+      
+      console.log("🗑️ Delete attempt - Detailed:", {
+        resourceId: id,
+        currentUserId: user?.id,
+        currentUserName: user?.name,
+        tokenExists: !!token
+      });
 
-    // First, test ownership
-    await testOwnership(id);
-
-    // Then attempt delete
-    const response = await axios.delete(`http://localhost:3000/api/resources/${id}`, {
-      headers: { Authorization: `Bearer ${token}` }
-    });
-    
-    console.log("✅ Delete successful:", response.data);
-    
-    // Update local state
-    setDocuments(prev => prev.filter(doc => doc.id !== id));
-    setFilteredDocuments(prev => prev.filter(doc => doc.id !== id));
-    alert("File deleted successfully");
-    
-  } catch (err) {
-    console.error("❌ Delete failed - Full details:", {
-      message: err.message,
-      status: err.response?.status,
-      data: err.response?.data,
-      user: JSON.parse(localStorage.getItem("user"))
-    });
-    
-    const errorMessage = err.response?.data?.message || "Failed to delete file";
-    const debugInfo = err.response?.data?.debug ? ` (Debug: ${JSON.stringify(err.response.data.debug)})` : '';
-    
-    alert(`Delete failed: ${errorMessage}${debugInfo}`);
-  }
-};
+      const response = await axios.delete(`http://localhost:3000/api/resources/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      console.log("✅ Delete successful:", response.data);
+      
+      // Update local state
+      setDocuments(prev => prev.filter(doc => doc.id !== id));
+      setFilteredDocuments(prev => prev.filter(doc => doc.id !== id));
+      alert("File deleted successfully");
+      
+    } catch (err) {
+      console.error("❌ Delete failed - Full details:", {
+        message: err.message,
+        status: err.response?.status,
+        data: err.response?.data,
+        user: JSON.parse(localStorage.getItem("user"))
+      });
+      
+      const errorMessage = err.response?.data?.message || "Failed to delete file";
+      const debugInfo = err.response?.data?.debug ? ` (Debug: ${JSON.stringify(err.response.data.debug)})` : '';
+      
+      alert(`Delete failed: ${errorMessage}${debugInfo}`);
+    }
+  };
 
   // Handle download
-  // Fix the handleDownload function in your ResourcesPage
-const handleDownload = async (doc) => {
-  try {
-    const token = localStorage.getItem("token");
-    console.log("📥 Download attempt:", {
-      documentId: doc.id,
-      documentName: doc.name,
-      tokenExists: !!token
-    });
+  const handleDownload = async (doc) => {
+    try {
+      const token = localStorage.getItem("token");
+      console.log("📥 Download attempt:", {
+        documentId: doc.id,
+        documentName: doc.name,
+        tokenExists: !!token
+      });
 
-    // Method 1: Direct download with authorization header
-    const response = await axios.get(doc.url, {
-      headers: { 
-        Authorization: `Bearer ${token}` 
-      },
-      responseType: 'blob'
-    });
+      // Method 1: Direct download with authorization header
+      const response = await axios.get(doc.url, {
+        headers: { 
+          Authorization: `Bearer ${token}` 
+        },
+        responseType: 'blob'
+      });
 
-    // Create download link
-    const url = window.URL.createObjectURL(new Blob([response.data]));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = doc.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
+      // Create download link
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = doc.name;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
 
-    console.log("✅ Download successful");
+      console.log("✅ Download successful");
 
-  } catch (err) {
-    console.error("❌ Download error:", err);
-    
-    // Method 2: Fallback - open in new tab with token
-    if (err.response?.status === 403) {
-      console.log("🔄 Trying fallback download method...");
-      const downloadUrl = `${doc.url}?token=${token}`;
-      window.open(downloadUrl, '_blank');
-    } else {
-      alert("Failed to download file");
+    } catch (err) {
+      console.error("❌ Download error:", err);
+      
+      // Method 2: Fallback - open in new tab with token
+      if (err.response?.status === 403) {
+        console.log("🔄 Trying fallback download method...");
+        const downloadUrl = `${doc.url}?token=${token}`;
+        window.open(downloadUrl, '_blank');
+      } else {
+        alert("Failed to download file");
+      }
     }
-  }
-};
+  };
 
   // Get file icon based on type
   const getFileIcon = (type) => {
@@ -1584,7 +1637,7 @@ const handleDownload = async (doc) => {
     if (type.includes('excel') || type.includes('spreadsheet')) return '';
     if (type.includes('powerpoint') || type.includes('presentation')) return '';
     if (type.includes('csv')) return '';
-    return '📁';
+    return '';
   };
 
   // Format file size
@@ -1611,20 +1664,25 @@ const handleDownload = async (doc) => {
 
   return (
     <div className="p-6 space-y-6">
-      <Card title="Study Resources" subtitle="Upload, share, and manage your study materials">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <div className="mb-6">
+          <h1 className="text-xl font-bold text-gray-900">Study Resources</h1>
+          <p className="text-gray-600 text-sm">Upload, share, and manage your study materials</p>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Upload Section */}
           <div className="lg:col-span-1">
-            <div className="p-6 border-2 border-dashed border-gray-300 rounded-2xl text-center hover:border-blue-300 transition-colors">
-              <div className="mb-4">
-                <FolderOpen className="mx-auto text-gray-400 text-4xl" />
+            <div className="p-4 border-2 border-dashed border-gray-300 rounded-xl text-center hover:border-blue-300 transition-colors">
+              <div className="mb-3">
+                <FolderOpen className="mx-auto text-gray-400 text-3xl" />
               </div>
-              <h3 className="font-semibold mb-2 text-lg">Upload Documents</h3>
-              <p className="text-sm text-gray-500 mb-4">
+              <h3 className="font-semibold mb-2 text-base">Upload Documents</h3>
+              <p className="text-xs text-gray-500 mb-3">
                 Supported formats: PDF, Word, Excel, PowerPoint, CSV
               </p>
               
-              <label className={`cursor-pointer inline-block px-6 py-3 rounded-lg transition-colors ${
+              <label className={`cursor-pointer inline-block px-4 py-2 rounded-lg transition-colors text-sm ${
                 uploading 
                   ? 'bg-gray-400 text-white cursor-not-allowed' 
                   : 'bg-blue-500 text-white hover:bg-blue-600'
@@ -1641,19 +1699,19 @@ const handleDownload = async (doc) => {
               </label>
               
               {uploading && (
-                <div className="mt-4">
-                  <div className="w-full bg-gray-200 rounded-full h-2">
-                    <div className="bg-blue-500 h-2 rounded-full animate-pulse"></div>
+                <div className="mt-3">
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div className="bg-blue-500 h-1.5 rounded-full animate-pulse"></div>
                   </div>
-                  <p className="text-xs text-gray-500 mt-2">Uploading files...</p>
+                  <p className="text-xs text-gray-500 mt-1">Uploading files...</p>
                 </div>
               )}
             </div>
 
             {/* Quick Stats */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <h4 className="font-semibold text-blue-800 mb-2">Quick Stats</h4>
-              <div className="space-y-2 text-sm">
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <h4 className="font-semibold text-blue-800 mb-2 text-sm">Quick Stats</h4>
+              <div className="space-y-1 text-xs">
                 <div className="flex justify-between">
                   <span className="text-blue-700">Total Files:</span>
                   <span className="font-medium">{documents.length}</span>
@@ -1676,33 +1734,38 @@ const handleDownload = async (doc) => {
 
           {/* Documents List */}
           <div className="lg:col-span-2">
-            <Card title="Resource Library" subtitle="Browse and download study materials from your peers">
+            <div className="bg-white rounded-xl border border-gray-200 p-4">
+              <div className="mb-4">
+                <h2 className="text-lg font-semibold text-gray-900">Resource Library</h2>
+                <p className="text-gray-600 text-sm">Browse and download study materials from your peers</p>
+              </div>
+
               {/* Search and Filter Bar */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="flex flex-col sm:flex-row gap-3 mb-4">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
                     placeholder="Search by name, category, uploader, or description..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors"
+                    className="w-full pl-9 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-colors text-sm"
                   />
                 </div>
                 
                 <div className="relative">
                   <button 
                     onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center gap-2 px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
                   >
-                    <Filter />
+                    <Filter className="w-4 h-4" />
                     <span>Filter</span>
-                    <ChevronDown />
+                    <ChevronDown className="w-4 h-4" />
                   </button>
                   
                   {showFilters && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
-                      <div className="px-3 py-2 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
+                      <div className="px-3 py-1 text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Categories
                       </div>
                       {categories.map(category => (
@@ -1712,7 +1775,7 @@ const handleDownload = async (doc) => {
                             setSelectedCategory(category);
                             setShowFilters(false);
                           }}
-                          className={`w-full text-left px-4 py-2 text-sm hover:bg-gray-50 transition-colors ${
+                          className={`w-full text-left px-3 py-1 text-xs hover:bg-gray-50 transition-colors ${
                             selectedCategory === category 
                               ? 'text-blue-600 bg-blue-50 font-medium' 
                               : 'text-gray-700'
@@ -1728,24 +1791,24 @@ const handleDownload = async (doc) => {
 
               {/* Active Filters */}
               {(searchQuery || selectedCategory !== 'all') && (
-                <div className="flex flex-wrap gap-2 mb-4">
+                <div className="flex flex-wrap gap-2 mb-3">
                   {searchQuery && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-800 border border-blue-200">
                       Search: "{searchQuery}"
                       <button 
                         onClick={() => setSearchQuery("")}
-                        className="ml-2 hover:text-blue-600 font-bold"
+                        className="ml-1 hover:text-blue-600 font-bold text-xs"
                       >
                         ×
                       </button>
                     </span>
                   )}
                   {selectedCategory !== 'all' && (
-                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-green-100 text-green-800 border border-green-200">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-800 border border-green-200">
                       Category: {selectedCategory}
                       <button 
                         onClick={() => setSelectedCategory("all")}
-                        className="ml-2 hover:text-green-600 font-bold"
+                        className="ml-1 hover:text-green-600 font-bold text-xs"
                       >
                         ×
                       </button>
@@ -1755,7 +1818,7 @@ const handleDownload = async (doc) => {
               )}
 
               {/* Results Count */}
-              <div className="mb-6 text-sm text-gray-600 bg-gray-50 p-3 rounded-lg">
+              <div className="mb-4 text-xs text-gray-600 bg-gray-50 p-2 rounded-lg">
                 <span className="font-medium">
                   Showing {filteredDocuments.length} of {documents.length} resources
                   {selectedCategory !== 'all' && ` in ${selectedCategory}`}
@@ -1763,10 +1826,10 @@ const handleDownload = async (doc) => {
               </div>
 
               {filteredDocuments.length === 0 ? (
-                <div className="text-center py-12 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-200">
-                  <FolderOpen className="mx-auto mb-4 opacity-50 text-4xl" />
-                  <p className="text-gray-500 mb-2 text-lg">No resources found</p>
-                  <p className="text-sm text-gray-400">
+                <div className="text-center py-8 bg-gray-50 rounded-xl border-2 border-dashed border-gray-200">
+                  <FolderOpen className="mx-auto mb-3 opacity-50 text-3xl" />
+                  <p className="text-gray-500 mb-1 text-sm">No resources found</p>
+                  <p className="text-xs text-gray-400">
                     {searchQuery || selectedCategory !== 'all' 
                       ? "Try adjusting your search or filters" 
                       : "Be the first to upload a study resource!"
@@ -1774,38 +1837,38 @@ const handleDownload = async (doc) => {
                   </p>
                 </div>
               ) : (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   {filteredDocuments.map((doc) => (
                     <div
                       key={doc.id}
-                      className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all bg-white"
+                      className="flex items-center justify-between p-3 border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-sm transition-all bg-white"
                     >
-                      <div className="flex items-center gap-4 flex-1 min-w-0">
-                        <span className="text-3xl flex-shrink-0">{getFileIcon(doc.type)}</span>
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-2xl flex-shrink-0">{getFileIcon(doc.type)}</span>
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 truncate">{doc.name}</h4>
+                          <h4 className="font-semibold text-gray-900 truncate text-sm">{doc.name}</h4>
                           {doc.description && doc.description !== "No description" && (
-                            <p className="text-sm text-gray-600 mt-1 line-clamp-2">{doc.description}</p>
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">{doc.description}</p>
                           )}
-                          <div className="flex flex-wrap gap-3 mt-2">
-                            <span className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
                               {doc.category}
                             </span>
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                               {formatFileSize(doc.size)}
                             </span>
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                               By {doc.uploader}
                             </span>
-                            <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                            <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">
                               {formatDate(doc.uploadDate)}
                             </span>
                           </div>
-                          <div className="mt-2 flex items-center text-xs text-gray-500">
-                            <Download className="mr-1" />
+                          <div className="mt-1 flex items-center text-xs text-gray-500">
+                            <Download className="mr-1 w-3 h-3" />
                             {doc.downloads} downloads
                             {doc.isOwner && (
-                              <span className="ml-3 px-2 py-1 bg-green-100 text-green-800 rounded-full">
+                              <span className="ml-2 px-1.5 py-0.5 bg-green-100 text-green-800 rounded-full text-xs">
                                 Your file
                               </span>
                             )}
@@ -1813,21 +1876,21 @@ const handleDownload = async (doc) => {
                         </div>
                       </div>
                       
-                      <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+                      <div className="flex items-center gap-1 flex-shrink-0 ml-3">
                         <button
                           onClick={() => handleDownload(doc)}
-                          className="p-3 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
                           title="Download"
                         >
-                          <Download />
+                          <Download className="w-4 h-4" />
                         </button>
                         {doc.isOwner && (
                           <button
                             onClick={() => handleDeleteFile(doc.id)}
-                            className="p-3 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-gray-200"
+                            className="p-2 text-gray-600 hover:bg-red-50 hover:text-red-600 rounded-lg transition-colors border border-gray-200"
                             title="Delete"
                           >
-                            <Trash2 />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         )}
                       </div>
@@ -1837,29 +1900,29 @@ const handleDownload = async (doc) => {
               )}
 
               {/* Storage Info */}
-              <div className="mt-8 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                <div className="flex items-center justify-between text-sm mb-2">
+              <div className="mt-6 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="flex items-center justify-between text-xs mb-1">
                   <span className="text-blue-800 font-medium">Community Storage</span>
                   <span className="font-bold text-blue-900">
                     {formatFileSize(documents.reduce((sum, doc) => sum + doc.size, 0))} used
                   </span>
                 </div>
-                <div className="w-full bg-blue-200 rounded-full h-3">
+                <div className="w-full bg-blue-200 rounded-full h-2">
                   <div 
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-500"
+                    className="bg-blue-600 h-2 rounded-full transition-all duration-500"
                     style={{ 
                       width: `${Math.min((documents.reduce((sum, doc) => sum + doc.size, 0) / (100 * 1024 * 1024)) * 100, 100)}%` 
                     }}
                   ></div>
                 </div>
-                <p className="text-xs text-blue-700 mt-2">
+                <p className="text-xs text-blue-700 mt-1">
                   Sharing knowledge helps everyone learn better. Keep contributing! 📚
                 </p>
               </div>
-            </Card>
+            </div>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -2723,14 +2786,6 @@ function SettingsPage() {
     confirmPassword: "",
   });
 
-  const [preferences, setPreferences] = useState({
-    emailNotifications: true,
-    pushNotifications: false,
-    studyReminders: true,
-    eventUpdates: true,
-    theme: "light",
-  });
-
   // Fetch student data on component mount
   useEffect(() => {
     fetchStudentData();
@@ -2755,16 +2810,16 @@ function SettingsPage() {
         setProfileForm({
           firstName: firstName,
           lastName: lastName,
-          bio: data.bio || "Computer Science student passionate about technology and innovation.",
-          university: data.university || "University of Technology",
-          course: data.course || "Computer Science",
-          yearOfStudy: data.year ? data.year.replace(' Year', '') : "3",
-          address: data.address || "123 University Ave, Campus Town",
+          bio: data.bio || "",
+          university: data.university || "",
+          course: data.course || "",
+          yearOfStudy: data.year ? data.year.replace(' Year', '') : "",
+          address: data.address || "",
         });
 
         setAccountForm(prev => ({
           ...prev,
-          email: data.email || "student@university.edu"
+          email: data.email || ""
         }));
 
         if (data.image && data.image !== "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=1887&q=80") {
@@ -2775,17 +2830,17 @@ function SettingsPage() {
       console.error("Error fetching student data:", error);
       // Set default data if API fails
       setProfileForm({
-        firstName: "Student",
-        lastName: "Name",
-        bio: "Computer Science student passionate about technology and innovation.",
-        university: "University of Technology",
-        course: "Computer Science",
-        yearOfStudy: "3",
-        address: "123 University Ave, Campus Town",
+        firstName: "",
+        lastName: "",
+        bio: "",
+        university: "",
+        course: "",
+        yearOfStudy: "",
+        address: "",
       });
       setAccountForm(prev => ({
         ...prev,
-        email: user?.email || "student@university.edu"
+        email: user?.email || ""
       }));
     }
   };
@@ -2811,10 +2866,6 @@ function SettingsPage() {
   const handleAccountChange = (field, value) => {
     setAccountForm((prev) => ({ ...prev, [field]: value }));
     if (errors[field]) setErrors((prev) => ({ ...prev, [field]: "" }));
-  };
-
-  const handlePreferenceChange = (field, value) => {
-    setPreferences((prev) => ({ ...prev, [field]: value }));
   };
 
   // ---------- Validations ----------
@@ -2970,41 +3021,6 @@ function SettingsPage() {
     }
   };
 
-  const handleSavePreferences = async () => {
-    setIsLoading(true);
-    setSaveStatus("saving");
-    
-    try {
-      const token = localStorage.getItem("token");
-      
-      // Save preferences to backend (you'll need to create this endpoint)
-      await axios.put("http://localhost:3000/api/preferences", preferences, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      setSaveStatus("saved");
-      Swal.fire({
-        icon: "success",
-        title: "Success",
-        text: "Preferences saved successfully!",
-        timer: 2000,
-        showConfirmButton: false
-      });
-    } catch (err) {
-      console.error("Preferences save error:", err);
-      Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "Failed to save preferences",
-      });
-    } finally {
-      setIsLoading(false);
-      setTimeout(() => setSaveStatus(""), 3000);
-    }
-  };
-
   const handleResetForm = () => {
     // Reset to original student data
     if (studentData) {
@@ -3048,30 +3064,29 @@ function SettingsPage() {
   // ---------- Render ----------
   return (
     <div className="p-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200">
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
         {/* Header */}
-        <div className="p-6 border-b border-gray-200">
-          <h1 className="text-2xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600">Manage your profile and account preferences</p>
+        <div className="p-6">
+          <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+          <p className="text-gray-600 text-sm">Manage your profile and account preferences</p>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-1 border-b border-gray-200 bg-gray-50 rounded-t-lg p-1 mx-6 mt-6">
+        <div className="flex gap-1 px-6">
           {[
             { id: "profile", label: "Profile", icon: UserIcon },
             { id: "account", label: "Account", icon: LockIcon },
-            { id: "preferences", label: "Preferences", icon: SettingsIcon },
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all ${
+              className={`flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-all ${
                 activeTab === tab.id
                   ? "bg-white text-blue-600 shadow-sm border border-gray-200"
-                  : "text-gray-500 hover:text-gray-700 hover:bg-white"
+                  : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
               }`}
             >
-              <tab.icon className="w-5 h-5" />
+              <tab.icon className="w-4 h-4" />
               {tab.label}
             </button>
           ))}
@@ -3095,27 +3110,27 @@ function SettingsPage() {
           {activeTab === "profile" && (
             <div className="space-y-6">
               {/* Profile Header */}
-              <div className="flex items-center gap-6 p-6 border border-gray-200 rounded-2xl bg-white">
+              <div className="flex items-center gap-6 p-6 border border-gray-200 rounded-xl bg-white">
                 <div className="relative">
                   <img
                     src={preview || studentData?.image || "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"}
                     alt="Profile"
-                    className="w-24 h-24 rounded-2xl object-cover border-4 border-white shadow-lg"
+                    className="w-20 h-20 rounded-xl object-cover border-2 border-white shadow"
                   />
-                  <label className="absolute bottom-1 right-1 bg-blue-500 text-white p-1.5 rounded-full cursor-pointer hover:bg-blue-600 transition-colors shadow-lg">
-                    <CameraIcon className="w-5 h-5" />
+                  <label className="absolute bottom-0 right-0 bg-blue-500 text-white p-1 rounded-full cursor-pointer hover:bg-blue-600 transition-colors shadow text-xs">
+                    <CameraIcon className="w-4 h-4" />
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
                   </label>
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-xl font-semibold text-gray-900">
+                  <h2 className="text-lg font-semibold text-gray-900">
                     {profileForm.firstName} {profileForm.lastName}
                   </h2>
-                  <p className="text-gray-600 mb-2">{profileForm.course} Student</p>
-                  <p className="text-sm text-gray-500">{profileForm.university}</p>
+                  <p className="text-gray-600 text-sm mb-2">{profileForm.course || "Course"} Student</p>
+                  <p className="text-xs text-gray-500">{profileForm.university || "University"}</p>
                   <div className="flex gap-2 mt-3">
                     <label className="cursor-pointer">
-                      <span className="px-3 py-1.5 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors">
+                      <span className="px-3 py-1.5 bg-blue-500 text-white text-xs rounded-lg hover:bg-blue-600 transition-colors">
                         Upload New Photo
                       </span>
                       <input type="file" accept="image/*" className="hidden" onChange={handleImageChange} />
@@ -3125,7 +3140,7 @@ function SettingsPage() {
                         setPreview(null);
                         setPreviewFile(null);
                       }}
-                      className="px-3 py-1.5 bg-gray-200 text-gray-700 text-sm rounded-lg hover:bg-gray-300 transition-colors"
+                      className="px-3 py-1.5 bg-gray-200 text-gray-700 text-xs rounded-lg hover:bg-gray-300 transition-colors"
                     >
                       Remove
                     </button>
@@ -3137,9 +3152,9 @@ function SettingsPage() {
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Personal Info */}
                 <div className="space-y-4">
-                  <div className="bg-white p-6 border border-gray-200 rounded-2xl">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <UserIcon className="w-5 h-5" /> Personal Information
+                  <div className="bg-white p-6 border border-gray-200 rounded-xl">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                      <UserIcon className="w-4 h-4" /> Personal Information
                     </h3>
                     <div className="space-y-4">
                       <div>
@@ -3147,10 +3162,11 @@ function SettingsPage() {
                         <input
                           value={profileForm.firstName}
                           onChange={(e) => handleProfileChange("firstName", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all text-sm ${
                             errors.firstName ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="First Name"
+                          placeholder="Enter your first name"
+                          style={{ color: profileForm.firstName ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                       </div>
@@ -3159,23 +3175,25 @@ function SettingsPage() {
                         <input
                           value={profileForm.lastName}
                           onChange={(e) => handleProfileChange("lastName", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.lastName ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Last Name"
+                          placeholder="Enter your last name"
+                          style={{ color: profileForm.lastName ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
                         <textarea
-                          rows={3}
+                          rows={2}
                           value={profileForm.bio}
                           onChange={(e) => handleProfileChange("bio", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none text-sm ${
                             errors.bio ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Tell us about yourself..."
+                          placeholder="Tell us about yourself, your interests, and goals..."
+                          style={{ color: profileForm.bio ? 'inherit' : '#9CA3AF' }}
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
                           <span>Brief description about yourself</span>
@@ -3189,9 +3207,9 @@ function SettingsPage() {
 
                 {/* Study Info */}
                 <div className="space-y-4">
-                  <div className="bg-white p-6 border border-gray-200 rounded-2xl">
-                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                      <GraduationCapIcon className="w-5 h-5" /> Study Information
+                  <div className="bg-white p-6 border border-gray-200 rounded-xl">
+                    <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                      <GraduationCapIcon className="w-4 h-4" /> Study Information
                     </h3>
                     <div className="space-y-4">
                       <div>
@@ -3199,10 +3217,11 @@ function SettingsPage() {
                         <input
                           value={profileForm.university}
                           onChange={(e) => handleProfileChange("university", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.university ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="University"
+                          placeholder="Enter your university name"
+                          style={{ color: profileForm.university ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.university && <p className="text-red-500 text-xs mt-1">{errors.university}</p>}
                       </div>
@@ -3211,10 +3230,11 @@ function SettingsPage() {
                         <input
                           value={profileForm.course}
                           onChange={(e) => handleProfileChange("course", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.course ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Course"
+                          placeholder="Enter your course/program"
+                          style={{ color: profileForm.course ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.course && <p className="text-red-500 text-xs mt-1">{errors.course}</p>}
                       </div>
@@ -3224,8 +3244,9 @@ function SettingsPage() {
                           <select
                             value={profileForm.yearOfStudy}
                             onChange={(e) => handleProfileChange("yearOfStudy", e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                           >
+                            <option value="">Select year</option>
                             {[1, 2, 3, 4, 5].map((year) => (
                               <option key={year} value={year}>
                                 Year {year}
@@ -3238,8 +3259,9 @@ function SettingsPage() {
                           <input
                             value={profileForm.address}
                             onChange={(e) => handleProfileChange("address", e.target.value)}
-                            className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                            placeholder="Address"
+                            className="w-full p-2 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                            placeholder="Enter your address"
+                            style={{ color: profileForm.address ? 'inherit' : '#9CA3AF' }}
                           />
                         </div>
                       </div>
@@ -3249,18 +3271,18 @@ function SettingsPage() {
               </div>
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-4 border-t">
+              <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleSaveProfile}
                   disabled={isLoading}
-                  className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                 >
                   {getSaveButtonText()}
                 </button>
                 <button
                   onClick={handleResetForm}
                   disabled={isLoading}
-                  className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                  className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors text-sm"
                 >
                   Reset
                 </button>
@@ -3271,9 +3293,9 @@ function SettingsPage() {
           {/* ---------- Account Tab ---------- */}
           {activeTab === "account" && (
             <div className="space-y-6">
-              <div className="bg-white p-6 border border-gray-200 rounded-2xl">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <MailIcon className="w-5 h-5" /> Email & Password
+              <div className="bg-white p-6 border border-gray-200 rounded-xl">
+                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2 text-sm">
+                  <MailIcon className="w-4 h-4" /> Email & Password
                 </h3>
                 <div className="space-y-4 max-w-md">
                   <div>
@@ -3282,16 +3304,17 @@ function SettingsPage() {
                       type="email"
                       value={accountForm.email}
                       onChange={(e) => handleAccountChange("email", e.target.value)}
-                      className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                      className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                         errors.email ? "border-red-500" : "border-gray-300"
                       }`}
-                      placeholder="Email"
+                      placeholder="Enter your email address"
+                      style={{ color: accountForm.email ? 'inherit' : '#9CA3AF' }}
                     />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </div>
 
                   <div className="pt-4 border-t">
-                    <h4 className="font-medium text-gray-900 mb-3">Change Password</h4>
+                    <h4 className="font-medium text-gray-900 mb-3 text-sm">Change Password</h4>
                     <div className="space-y-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Current Password</label>
@@ -3299,10 +3322,11 @@ function SettingsPage() {
                           type="password"
                           value={accountForm.currentPassword}
                           onChange={(e) => handleAccountChange("currentPassword", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.currentPassword ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Enter current password"
+                          placeholder="Enter your current password"
+                          style={{ color: accountForm.currentPassword ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.currentPassword && <p className="text-red-500 text-xs mt-1">{errors.currentPassword}</p>}
                       </div>
@@ -3312,10 +3336,11 @@ function SettingsPage() {
                           type="password"
                           value={accountForm.newPassword}
                           onChange={(e) => handleAccountChange("newPassword", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.newPassword ? "border-red-500" : "border-gray-300"
                           }`}
                           placeholder="Enter new password"
+                          style={{ color: accountForm.newPassword ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
                       </div>
@@ -3325,10 +3350,11 @@ function SettingsPage() {
                           type="password"
                           value={accountForm.confirmPassword}
                           onChange={(e) => handleAccountChange("confirmPassword", e.target.value)}
-                          className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          className={`w-full p-2 border rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm ${
                             errors.confirmPassword ? "border-red-500" : "border-gray-300"
                           }`}
-                          placeholder="Confirm new password"
+                          placeholder="Confirm your new password"
+                          style={{ color: accountForm.confirmPassword ? 'inherit' : '#9CA3AF' }}
                         />
                         {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
                       </div>
@@ -3340,7 +3366,7 @@ function SettingsPage() {
                   <button
                     onClick={handleSaveAccount}
                     disabled={isLoading}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
                   >
                     {getSaveButtonText()}
                   </button>
@@ -3349,61 +3375,10 @@ function SettingsPage() {
                       setAccountForm((prev) => ({ ...prev, currentPassword: "", newPassword: "", confirmPassword: "" }))
                     }
                     disabled={isLoading}
-                    className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors"
+                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 disabled:opacity-50 transition-colors text-sm"
                   >
                     Clear Passwords
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ---------- Preferences Tab ---------- */}
-          {activeTab === "preferences" && (
-            <div className="space-y-6">
-              <div className="bg-white p-6 border border-gray-200 rounded-2xl">
-                <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <SettingsIcon className="w-5 h-5" /> Preferences
-                </h3>
-                <div className="space-y-4">
-                  {[
-                    { label: "Email Notifications", field: "emailNotifications" },
-                    { label: "Push Notifications", field: "pushNotifications" },
-                    { label: "Study Reminders", field: "studyReminders" },
-                    { label: "Event Updates", field: "eventUpdates" },
-                  ].map((pref) => (
-                    <div key={pref.field} className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={preferences[pref.field]}
-                        onChange={(e) => handlePreferenceChange(pref.field, e.target.checked)}
-                        className="w-5 h-5 rounded"
-                      />
-                      <label>{pref.label}</label>
-                    </div>
-                  ))}
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Theme</label>
-                    <select
-                      value={preferences.theme}
-                      onChange={(e) => handlePreferenceChange("theme", e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                    </select>
-                  </div>
-
-                  <div className="flex gap-3 pt-4">
-                    <button
-                      onClick={handleSavePreferences}
-                      disabled={isLoading}
-                      className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
-                    >
-                      {getSaveButtonText()}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
@@ -3449,64 +3424,38 @@ function StudyCirclePage() {
   // API Base URL
   const API_BASE_URL = 'http://localhost:3000/api/study-groups';
 
-  // Debug localStorage
-  const debugLocalStorage = () => {
-    console.log('🔍 localStorage contents:', {
-      token: localStorage.getItem('token'),
-      user: localStorage.getItem('user'),
-      allItems: { ...localStorage }
-    });
-  };
-
   // Get authentication token
   const getAuthToken = () => {
-    const token = localStorage.getItem('token');
-    console.log("🔐 Token retrieval:", {
-      exists: !!token,
-      length: token?.length,
-      firstChars: token ? token.substring(0, 20) + '...' : 'none'
-    });
-    return token;
+    return localStorage.getItem('token');
   };
 
   // Get current user from token
   const getCurrentUser = () => {
-    console.log('🔄 Getting current user...');
-    
-    // Method 1: Try to get from localStorage user object first
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       try {
-        const user = JSON.parse(storedUser);
-        console.log('✅ User from localStorage:', user);
-        return user;
+        return JSON.parse(storedUser);
       } catch (error) {
-        console.error('❌ Error parsing stored user:', error);
+        console.error('Error parsing stored user:', error);
       }
     }
     
-    // Method 2: Decode from JWT token
     const token = getAuthToken();
     if (token) {
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        console.log('✅ User from JWT payload:', payload);
-        
         const user = {
           id: payload.id,
           name: payload.name,
           role: payload.role
         };
-        
-        // Store for future use
         localStorage.setItem('user', JSON.stringify(user));
         return user;
       } catch (error) {
-        console.error('❌ Error decoding token:', error);
+        console.error('Error decoding token:', error);
       }
     }
     
-    console.log('❌ No user found');
     return null;
   };
 
@@ -3519,9 +3468,6 @@ function StudyCirclePage() {
     
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      console.log('📤 Adding Authorization header with token');
-    } else {
-      console.warn('⚠️ No token available for Authorization header');
     }
     
     return headers;
@@ -3531,18 +3477,13 @@ function StudyCirclePage() {
   const apiFetch = async (url, options = {}) => {
     const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
     
-    console.log(`🌐 API Call: ${options.method || 'GET'} ${fullUrl}`);
-    
     try {
       const response = await fetch(fullUrl, {
         ...options,
         headers: getHeaders()
       });
       
-      console.log(`📨 Response: ${response.status} ${response.statusText}`);
-      
       if (response.status === 401) {
-        console.error('❌ Authentication failed - 401 Unauthorized');
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setCurrentUser(null);
@@ -3550,32 +3491,13 @@ function StudyCirclePage() {
       }
       
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`❌ API Error ${response.status}:`, errorText);
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        throw new Error(`HTTP ${response.status}`);
       }
       
       return response;
     } catch (error) {
-      console.error('❌ Fetch error:', error);
+      console.error('Fetch error:', error);
       throw error;
-    }
-  };
-
-  // Test authentication
-  const testAuthentication = async () => {
-    try {
-      console.log('🧪 Testing authentication...');
-      const response = await apiFetch('/debug-auth');
-      if (response) {
-        const result = await response.json();
-        console.log('✅ Authentication test successful:', result);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('❌ Authentication test failed:', error);
-      return false;
     }
   };
 
@@ -3583,25 +3505,15 @@ function StudyCirclePage() {
   const fetchAllGroups = async () => {
     try {
       setLoading(true);
-      console.log('🔄 Fetching all groups...');
-      
       const response = await apiFetch('/all');
-      if (!response) {
-        console.error('❌ Cannot fetch groups - authentication failed');
-        return;
-      }
+      if (!response) return;
       
       const result = await response.json();
-      console.log('✅ All groups response:', result);
-      
       if (result.success) {
         setGroups(result.data || []);
-        console.log(`✅ Loaded ${result.data?.length || 0} groups`);
-      } else {
-        console.error('❌ Failed to fetch groups:', result.message);
       }
     } catch (error) {
-      console.error('❌ Error fetching groups:', error);
+      console.error('Error fetching groups:', error);
     } finally {
       setLoading(false);
     }
@@ -3610,64 +3522,41 @@ function StudyCirclePage() {
   // Fetch my groups
   const fetchMyGroups = async () => {
     try {
-      console.log('🔄 Fetching my groups...');
-      
       const response = await apiFetch('/my-groups');
       if (!response) return;
       
       const result = await response.json();
-      console.log('✅ My groups response:', result);
-      
       if (result.success) {
         setMyGroups(result.data || []);
       }
     } catch (error) {
-      console.error('❌ Error fetching my groups:', error);
+      console.error('Error fetching my groups:', error);
     }
   };
 
   // Load data on component mount
   useEffect(() => {
-    console.log('🚀 StudyCirclePage mounted');
-    debugLocalStorage();
-    
     const initializeApp = async () => {
       const user = getCurrentUser();
-      console.log('👤 Initial user:', user);
-      
       if (user) {
         setCurrentUser(user);
-        
-        // Test authentication first
-        const isAuthenticated = await testAuthentication();
-        if (isAuthenticated) {
-          await fetchAllGroups();
-          await fetchMyGroups();
-        } else {
-          setLoading(false);
-          console.error('❌ Authentication test failed');
-        }
+        await fetchAllGroups();
+        await fetchMyGroups();
       } else {
         setLoading(false);
-        console.error('❌ No user found - please log in');
       }
     };
 
     initializeApp();
   }, []);
 
-  // Add a refresh button for testing
-  const handleRefresh = async () => {
-    console.log('🔄 Manual refresh...');
-    debugLocalStorage();
-    
-    const user = getCurrentUser();
-    if (user) {
-      setCurrentUser(user);
-      setLoading(true);
-      await fetchAllGroups();
-      await fetchMyGroups();
-    }
+  // Handle input changes properly
+  const handleInputChange = (setter) => (e) => {
+    const { name, value } = e.target;
+    setter(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
   // Filter groups based on search and filters
@@ -3721,8 +3610,6 @@ function StudyCirclePage() {
     }
 
     try {
-      console.log('🔄 Creating new group...', newGroup);
-      
       const response = await apiFetch('', {
         method: 'POST',
         body: JSON.stringify(newGroup)
@@ -3731,8 +3618,6 @@ function StudyCirclePage() {
       if (!response) return;
 
       const result = await response.json();
-      console.log('✅ Create group response:', result);
-      
       if (result.success) {
         await fetchAllGroups();
         await fetchMyGroups();
@@ -3754,7 +3639,7 @@ function StudyCirclePage() {
         alert(`❌ Failed to create group: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Error creating group:', error);
+      console.error('Error creating group:', error);
       alert('❌ Failed to create study group. Please try again.');
     }
   };
@@ -3770,8 +3655,6 @@ function StudyCirclePage() {
     }
 
     try {
-      console.log('🔄 Updating group...', editGroup);
-      
       const response = await apiFetch(`/${editGroup.id}`, {
         method: 'PUT',
         body: JSON.stringify(editGroup)
@@ -3780,8 +3663,6 @@ function StudyCirclePage() {
       if (!response) return;
 
       const result = await response.json();
-      console.log('✅ Update group response:', result);
-      
       if (result.success) {
         await fetchAllGroups();
         await fetchMyGroups();
@@ -3794,44 +3675,40 @@ function StudyCirclePage() {
         alert(`❌ Failed to update group: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Error updating group:', error);
+      console.error('Error updating group:', error);
       alert('❌ Failed to update study group. Please try again.');
     }
   };
 
   // Delete a group
   const handleDeleteGroup = async (groupId) => {
-    if (window.confirm("Are you sure you want to delete this group? This action cannot be undone.")) {
-      try {
-        console.log('🔄 Deleting group...', groupId);
-        
-        const response = await apiFetch(`/${groupId}`, {
-          method: 'DELETE'
-        });
-
-        if (!response) return;
-
-        const result = await response.json();
-        console.log('✅ Delete group response:', result);
-        
-        if (result.success) {
-          await fetchAllGroups();
-          await fetchMyGroups();
-          
-          if (selectedGroup?.id === groupId) {
-            setShowDetailsModal(false);
-          }
-          
-          alert('✅ Study group deleted successfully!');
-        } else {
-          alert(`❌ Failed to delete group: ${result.message}`);
-        }
-      } catch (error) {
-        console.error('❌ Error deleting group:', error);
-        alert('❌ Failed to delete study group. Please try again.');
+  try {
+    const token = localStorage.getItem('token'); // or your token storage method
+    
+    const response = await fetch(`/api/study-groups/${groupId}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}` // Make sure this is included
       }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to delete group');
     }
-  };
+
+    const result = await response.json();
+    console.log('Group deleted successfully:', result);
+    
+    // Refresh the groups list or update state
+    fetchMyGroups();
+    
+  } catch (error) {
+    console.error('Error deleting group:', error);
+    alert(`Error: ${error.message}`);
+  }
+};
 
   // Join a group
   const joinGroup = async (groupId) => {
@@ -3851,7 +3728,7 @@ function StudyCirclePage() {
         alert(`❌ Failed to join group: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Error joining group:', error);
+      console.error('Error joining group:', error);
       alert('❌ Failed to join group. Please try again.');
     }
   };
@@ -3874,7 +3751,7 @@ function StudyCirclePage() {
         alert(`❌ Failed to leave group: ${result.message}`);
       }
     } catch (error) {
-      console.error('❌ Error leaving group:', error);
+      console.error('Error leaving group:', error);
       alert('❌ Failed to leave group. Please try again.');
     }
   };
@@ -3904,12 +3781,6 @@ function StudyCirclePage() {
     setShowDetailsModal(true);
   };
 
-  // Copy meeting link to clipboard
-  const copyMeetingLink = (link) => {
-    navigator.clipboard.writeText(link);
-    alert("✅ Meeting link copied to clipboard!");
-  };
-
   // Format date for display
   const formatDate = (dateString) => {
     if (!dateString) return '';
@@ -3917,15 +3788,98 @@ function StudyCirclePage() {
     return date.toISOString().split('T')[0];
   };
 
-  // Debug info
-  console.log("🔍 Current state:", {
-    currentUser,
-    loading,
-    groupsCount: groups.length,
-    myGroupsCount: myGroups.length,
-    filteredGroupsCount: filteredGroups.length,
-    hasToken: !!getAuthToken()
-  });
+  // Card Component for Study Groups
+  const GroupCard = ({ group, showActions = true, isMyGroup = false }) => {
+    const isMember = group.members?.includes(currentUser?.name);
+    const isFull = (group.members?.length || 0) >= group.num_members;
+    const availableSlots = group.num_members - (group.members?.length || 0);
+
+    return (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5 hover:shadow-md transition-all duration-200">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-gray-900 mb-1">{group.group_name}</h3>
+            <p className="text-sm text-gray-600 mb-2">{group.module_name}</p>
+          </div>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {group.meeting_platform}
+          </span>
+        </div>
+
+        {/* Description */}
+        {group.about && (
+          <p className="text-gray-700 text-sm mb-4 line-clamp-2">{group.about}</p>
+        )}
+
+        {/* Details */}
+        <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
+          <div>
+            <span className="text-gray-500">Date:</span>
+            <p className="font-medium">{formatDate(group.meeting_date)} {group.meeting_time && `at ${group.meeting_time}`}</p>
+          </div>
+          <div>
+            <span className="text-gray-500">Members:</span>
+            <p className="font-medium">{group.members?.length || 0}/{group.num_members}</p>
+          </div>
+          <div>
+            <span className="text-gray-500">Owner:</span>
+            <p className="font-medium">{group.owner || "Unknown"}</p>
+          </div>
+          <div>
+            <span className="text-gray-500">Status:</span>
+            <p className={`font-medium ${isFull ? 'text-red-600' : 'text-green-600'}`}>
+              {isFull ? 'Full' : `${availableSlots} slots available`}
+            </p>
+          </div>
+        </div>
+
+        {/* Actions */}
+        {showActions && (
+          <div className="flex gap-2 pt-4 border-t border-gray-100">
+            <button
+              onClick={() => viewGroupDetails(group)}
+              className="flex-1 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+            >
+              View Details
+            </button>
+            
+            {isMyGroup ? (
+              <>
+                <button
+                  onClick={() => {
+                    setEditGroup({...group});
+                    setShowEditModal(true);
+                  }}
+                  className="px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteGroup(group.id)}
+                  className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => toggleJoin(group.id)}
+                className={`flex-1 px-3 py-2 text-sm rounded-lg transition-colors border ${
+                  isMember
+                    ? 'text-red-600 hover:bg-red-50 border-red-200'
+                    : 'text-green-600 hover:bg-green-50 border-green-200'
+                }`}
+                disabled={!isMember && isFull}
+              >
+                {isMember ? 'Leave Group' : isFull ? 'Full' : 'Join Group'}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   // Modal Component
   const Modal = ({ isOpen, onClose, children, title }) => {
@@ -3934,17 +3888,17 @@ function StudyCirclePage() {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center">
         <div className="absolute inset-0 bg-black bg-opacity-50 backdrop-blur-sm" onClick={onClose}></div>
-        <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between p-6 border-b">
-            <h2 className="text-xl font-semibold">{title}</h2>
+        <div className="relative bg-white rounded-xl shadow-xl max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+          <div className="flex items-center justify-between p-5 border-b">
+            <h2 className="text-lg font-semibold">{title}</h2>
             <button
               onClick={onClose}
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
             >
-              <X size={20} />
+              ×
             </button>
           </div>
-          <div className="p-6">
+          <div className="p-5">
             {children}
           </div>
         </div>
@@ -3954,8 +3908,8 @@ function StudyCirclePage() {
 
   // Card Component
   const Card = ({ children, title, className = '' }) => (
-    <div className={`bg-white rounded-2xl shadow-md p-6 ${className}`}>
-      {title && <h2 className="text-xl font-semibold mb-4">{title}</h2>}
+    <div className={`bg-white rounded-xl shadow-sm p-5 ${className}`}>
+      {title && <h2 className="text-lg font-semibold mb-4">{title}</h2>}
       {children}
     </div>
   );
@@ -3964,34 +3918,12 @@ function StudyCirclePage() {
     return (
       <div className="p-6 flex justify-center items-center min-h-64 flex-col space-y-4">
         <div className="text-lg text-red-600">Please log in to view study groups</div>
-        <div className="text-sm text-gray-500">No valid user token found</div>
-        
-        {/* Debug information */}
-        <div className="bg-gray-100 p-4 rounded-lg text-xs">
-          <div>Token exists: {localStorage.getItem('token') ? 'Yes' : 'No'}</div>
-          <div>User data: {localStorage.getItem('user') || 'None'}</div>
-        </div>
-        
-        <div className="flex space-x-4">
-          <button 
-            onClick={() => window.location.href = '/login'}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-          >
-            Go to Login
-          </button>
-          <button 
-            onClick={handleRefresh}
-            className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600"
-          >
-            Refresh
-          </button>
-          <button 
-            onClick={debugLocalStorage}
-            className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
-          >
-            Debug Storage
-          </button>
-        </div>
+        <button 
+          onClick={() => window.location.href = '/login'}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
+        >
+          Go to Login
+        </button>
       </div>
     );
   }
@@ -4006,61 +3938,52 @@ function StudyCirclePage() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header with debug button */}
+      {/* Header */}
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Study Circles</h1>
           <p className="text-gray-600">Find or manage your study groups</p>
-          <p className="text-sm text-gray-500">Welcome, {currentUser.name} (ID: {currentUser.id})</p>
         </div>
-        <div className="flex space-x-2">
-          <button
-            onClick={handleRefresh}
-            className="flex items-center gap-2 px-3 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors text-sm"
-          >
-            Refresh
-          </button>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
-          >
-            <Plus size={16} />
-            Create Group
-          </button>
-        </div>
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+        >
+          Create Group
+        </button>
       </div>
 
       {/* Search and Filters */}
       <Card>
         <div className="flex flex-col sm:flex-row gap-4 mb-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
               placeholder="Search by group name, module, or description..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none"
+              className="w-full pl-4 pr-4 py-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
             />
           </div>
           
           <div className="relative">
             <button 
               onClick={() => setShowFilters(!showFilters)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Filters"
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-sm flex items-center gap-2"
             >
-              <Filter className="w-5 h-5" />
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.207A1 1 0 013 6.5V4z" />
+              </svg>
+              Filters
             </button>
             
             {showFilters && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-200">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg py-2 z-10 border border-gray-200">
                 <label className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={filters.joinedOnly}
                     onChange={(e) => setFilters({...filters, joinedOnly: e.target.checked})}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   Joined Groups Only
                 </label>
@@ -4069,7 +3992,7 @@ function StudyCirclePage() {
                     type="checkbox"
                     checked={filters.ownedOnly}
                     onChange={(e) => setFilters({...filters, ownedOnly: e.target.checked})}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   My Groups Only
                 </label>
@@ -4078,7 +4001,7 @@ function StudyCirclePage() {
                     type="checkbox"
                     checked={filters.withSlots}
                     onChange={(e) => setFilters({...filters, withSlots: e.target.checked})}
-                    className="mr-2 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="mr-3 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                   />
                   With Available Slots
                 </label>
@@ -4088,82 +4011,23 @@ function StudyCirclePage() {
         </div>
 
         {/* Results Count */}
-        <div className="mb-4 text-sm text-gray-600">
+        <div className="text-sm text-gray-600">
           Showing {filteredGroups.length} of {groups.length} groups
         </div>
       </Card>
 
-      {/* My Study Groups Table */}
+      {/* My Study Groups */}
       {myGroups.length > 0 && (
         <Card title="My Study Groups">
-          <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Group Name</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Module</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date & Time</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Members</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Platform</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {myGroups.map((group, index) => (
-                  <tr 
-                    key={group.id} 
-                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                      index % 2 === 0 ? 'bg-gray-25' : 'bg-white'
-                    }`}
-                  >
-                    <td className="py-3 px-4">
-                      <div className="text-sm font-medium text-gray-900">{group.group_name}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-xs">{group.about}</div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{group.module_name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {formatDate(group.meeting_date)} {group.meeting_time && `at ${group.meeting_time}`}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {group.members?.length || 0}/{group.num_members}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {group.meeting_platform}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => {
-                            setEditGroup({...group});
-                            setShowEditModal(true);
-                          }}
-                          className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Edit group"
-                        >
-                          <Edit3 size={14} />
-                        </button>
-                        <button
-                          onClick={() => viewGroupDetails(group)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="View details"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteGroup(group.id)}
-                          className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete group"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {myGroups.map((group) => (
+              <GroupCard 
+                key={group.id} 
+                group={group} 
+                showActions={true}
+                isMyGroup={true}
+              />
+            ))}
           </div>
         </Card>
       )}
@@ -4171,206 +4035,162 @@ function StudyCirclePage() {
       {/* All Study Groups */}
       <Card title="All Study Groups">
         {filteredGroups.length === 0 ? (
-          <div className="text-center py-12 bg-gray-50 rounded-2xl">
+          <div className="text-center py-12 bg-gray-50 rounded-xl">
             <div className="text-lg font-medium text-gray-900 mb-2">No groups found</div>
             <p className="text-gray-600 mb-4">Try adjusting your search or filters</p>
             <button
               onClick={() => setShowCreateModal(true)}
-              className="flex items-center gap-2 px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
             >
-              <Plus size={16} />
               Create First Group
             </button>
           </div>
         ) : (
-          <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-            <table className="w-full">
-              <thead>
-                <tr className="bg-gray-50 border-b border-gray-200">
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Group name</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Module</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Date & Time</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Owner</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Members</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Platform</th>
-                  <th className="text-left py-3 px-4 text-xs font-semibold text-gray-600 uppercase tracking-wider">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredGroups.map((group, index) => (
-                  <tr 
-                    key={group.id} 
-                    className={`border-b border-gray-100 hover:bg-gray-50 transition-colors ${
-                      index % 2 === 0 ? 'bg-gray-25' : 'bg-white'
-                    }`}
-                  >
-                    <td className="py-3 px-4">
-                      <div className="text-sm font-medium text-gray-900">{group.group_name}</div>
-                      <div className="text-xs text-gray-500 truncate max-w-xs">{group.about}</div>
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{group.module_name}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {formatDate(group.meeting_date)} {group.meeting_time && `at ${group.meeting_time}`}
-                    </td>
-                    <td className="py-3 px-4 text-sm text-gray-700">{group.owner || "Unknown"}</td>
-                    <td className="py-3 px-4 text-sm text-gray-700">
-                      {group.members?.length || 0}/{group.num_members}
-                    </td>
-                    <td className="py-3 px-4">
-                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {group.meeting_platform}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => viewGroupDetails(group)}
-                          className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                          title="View details"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button
-                          onClick={() => toggleJoin(group.id)}
-                          className={`p-1.5 rounded-lg transition-colors ${
-                            group.members?.includes(currentUser.name)
-                              ? "text-red-600 hover:bg-red-50"
-                              : "text-green-600 hover:bg-green-50"
-                          }`}
-                          title={group.members?.includes(currentUser.name) ? "Leave group" : "Join group"}
-                        >
-                          {group.members?.includes(currentUser.name) ? <Minus size={14} /> : <Plus size={14} />}
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filteredGroups.map((group) => (
+              <GroupCard 
+                key={group.id} 
+                group={group} 
+                showActions={true}
+                isMyGroup={false}
+              />
+            ))}
           </div>
         )}
       </Card>
 
       {/* Create Group Modal */}
       <Modal isOpen={showCreateModal} onClose={() => {setShowCreateModal(false); setErrors({});}} title="Create New Study Group">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Group Name *
             </label>
             <input
               type="text"
+              name="group_name"
               value={newGroup.group_name}
-              onChange={(e) => setNewGroup({ ...newGroup, group_name: e.target.value })}
-              className={`w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none ${
-                errors.group_name ? 'ring-2 ring-red-500' : ''
+              onChange={handleInputChange(setNewGroup)}
+              className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                errors.group_name ? 'border-red-500' : ''
               }`}
               placeholder="e.g., Advanced Calculus Study Group"
             />
             {errors.group_name && <p className="text-red-500 text-xs mt-1">{errors.group_name}</p>}
           </div>
           
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Module Name *
             </label>
             <input
               type="text"
+              name="module_name"
               value={newGroup.module_name}
-              onChange={(e) => setNewGroup({ ...newGroup, module_name: e.target.value })}
-              className={`w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none ${
-                errors.module_name ? 'ring-2 ring-red-500' : ''
+              onChange={handleInputChange(setNewGroup)}
+              className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                errors.module_name ? 'border-red-500' : ''
               }`}
               placeholder="e.g., Calculus 101"
             />
             {errors.module_name && <p className="text-red-500 text-xs mt-1">{errors.module_name}</p>}
           </div>
           
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date *
-            </label>
-            <input
-              type="date"
-              value={newGroup.meeting_date}
-              onChange={(e) => setNewGroup({ ...newGroup, meeting_date: e.target.value })}
-              className={`w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none ${
-                errors.meeting_date ? 'ring-2 ring-red-500' : ''
-              }`}
-            />
-            {errors.meeting_date && <p className="text-red-500 text-xs mt-1">{errors.meeting_date}</p>}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date *
+              </label>
+              <input
+                type="date"
+                name="meeting_date"
+                value={newGroup.meeting_date}
+                onChange={handleInputChange(setNewGroup)}
+                className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                  errors.meeting_date ? 'border-red-500' : ''
+                }`}
+              />
+              {errors.meeting_date && <p className="text-red-500 text-xs mt-1">{errors.meeting_date}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Time
+              </label>
+              <input
+                type="time"
+                name="meeting_time"
+                value={newGroup.meeting_time}
+                onChange={handleInputChange(setNewGroup)}
+                className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Number of Members *
+              </label>
+              <input
+                type="number"
+                name="num_members"
+                min="2"
+                max="20"
+                value={newGroup.num_members}
+                onChange={handleInputChange(setNewGroup)}
+                className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                  errors.num_members ? 'border-red-500' : ''
+                }`}
+              />
+              {errors.num_members && <p className="text-red-500 text-xs mt-1">{errors.num_members}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meeting Platform *
+              </label>
+              <select
+                name="meeting_platform"
+                value={newGroup.meeting_platform}
+                onChange={handleInputChange(setNewGroup)}
+                className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
+              >
+                <option value="Microsoft Teams">Microsoft Teams</option>
+                <option value="Zoom">Zoom</option>
+                <option value="Google Meet">Google Meet</option>
+                <option value="Discord">Discord</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Time
-            </label>
-            <input
-              type="time"
-              value={newGroup.meeting_time}
-              onChange={(e) => setNewGroup({ ...newGroup, meeting_time: e.target.value })}
-              className="w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none"
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Number of Members *
-            </label>
-            <input
-              type="number"
-              min="2"
-              max="20"
-              value={newGroup.num_members}
-              onChange={(e) => setNewGroup({ ...newGroup, num_members: parseInt(e.target.value) || 2 })}
-              className={`w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none ${
-                errors.num_members ? 'ring-2 ring-red-500' : ''
-              }`}
-            />
-            {errors.num_members && <p className="text-red-500 text-xs mt-1">{errors.num_members}</p>}
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Meeting Platform *
-            </label>
-            <select
-              value={newGroup.meeting_platform}
-              onChange={(e) => setNewGroup({ ...newGroup, meeting_platform: e.target.value })}
-              className="w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none"
-            >
-              <option value="Microsoft Teams">Microsoft Teams</option>
-              <option value="Zoom">Zoom</option>
-              <option value="Google Meet">Google Meet</option>
-              <option value="Discord">Discord</option>
-              <option value="Other">Other</option>
-            </select>
-          </div>
-          
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Meeting Link *
             </label>
             <input
               type="text"
+              name="meeting_link"
               value={newGroup.meeting_link}
-              onChange={(e) => setNewGroup({ ...newGroup, meeting_link: e.target.value })}
-              className={`w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none ${
-                errors.meeting_link ? 'ring-2 ring-red-500' : ''
+              onChange={handleInputChange(setNewGroup)}
+              className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                errors.meeting_link ? 'border-red-500' : ''
               }`}
               placeholder="Paste your meeting link here"
             />
             {errors.meeting_link && <p className="text-red-500 text-xs mt-1">{errors.meeting_link}</p>}
           </div>
           
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               About the Group
             </label>
             <textarea
+              name="about"
               value={newGroup.about}
-              onChange={(e) => setNewGroup({ ...newGroup, about: e.target.value })}
-              className="w-full p-2 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none"
+              onChange={handleInputChange(setNewGroup)}
+              className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
               rows="3"
               placeholder="Describe the purpose and focus of this study group..."
             />
@@ -4379,20 +4199,277 @@ function StudyCirclePage() {
         <div className="flex gap-3 justify-end mt-6">
           <button
             onClick={() => {setShowCreateModal(false); setErrors({});}}
-            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-sm"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateGroup}
-            className="px-6 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
+            className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
           >
             Create Group
           </button>
         </div>
       </Modal>
 
-      {/* Rest of your modals (Edit, Details) would go here with similar API integration */}
+      {/* Edit Group Modal */}
+      {showEditModal && editGroup && (
+        <Modal isOpen={showEditModal} onClose={() => {setShowEditModal(false); setErrors({});}} title="Edit Study Group">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Group Name *
+              </label>
+              <input
+                type="text"
+                name="group_name"
+                value={editGroup.group_name}
+                onChange={handleInputChange(setEditGroup)}
+                className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                  errors.group_name ? 'border-red-500' : ''
+                }`}
+              />
+              {errors.group_name && <p className="text-red-500 text-xs mt-1">{errors.group_name}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Module Name *
+              </label>
+              <input
+                type="text"
+                name="module_name"
+                value={editGroup.module_name}
+                onChange={handleInputChange(setEditGroup)}
+                className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                  errors.module_name ? 'border-red-500' : ''
+                }`}
+              />
+              {errors.module_name && <p className="text-red-500 text-xs mt-1">{errors.module_name}</p>}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Date *
+                </label>
+                <input
+                  type="date"
+                  name="meeting_date"
+                  value={editGroup.meeting_date}
+                  onChange={handleInputChange(setEditGroup)}
+                  className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                    errors.meeting_date ? 'border-red-500' : ''
+                  }`}
+                />
+                {errors.meeting_date && <p className="text-red-500 text-xs mt-1">{errors.meeting_date}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Time
+                </label>
+                <input
+                  type="time"
+                  name="meeting_time"
+                  value={editGroup.meeting_time}
+                  onChange={handleInputChange(setEditGroup)}
+                  className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
+                />
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Number of Members *
+                </label>
+                <input
+                  type="number"
+                  name="num_members"
+                  min="2"
+                  max="20"
+                  value={editGroup.num_members}
+                  onChange={handleInputChange(setEditGroup)}
+                  className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                    errors.num_members ? 'border-red-500' : ''
+                  }`}
+                />
+                {errors.num_members && <p className="text-red-500 text-xs mt-1">{errors.num_members}</p>}
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Meeting Platform *
+                </label>
+                <select
+                  name="meeting_platform"
+                  value={editGroup.meeting_platform}
+                  onChange={handleInputChange(setEditGroup)}
+                  className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
+                >
+                  <option value="Microsoft Teams">Microsoft Teams</option>
+                  <option value="Zoom">Zoom</option>
+                  <option value="Google Meet">Google Meet</option>
+                  <option value="Discord">Discord</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Meeting Link *
+              </label>
+              <input
+                type="text"
+                name="meeting_link"
+                value={editGroup.meeting_link}
+                onChange={handleInputChange(setEditGroup)}
+                className={`w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm ${
+                  errors.meeting_link ? 'border-red-500' : ''
+                }`}
+              />
+              {errors.meeting_link && <p className="text-red-500 text-xs mt-1">{errors.meeting_link}</p>}
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                About the Group
+              </label>
+              <textarea
+                name="about"
+                value={editGroup.about}
+                onChange={handleInputChange(setEditGroup)}
+                className="w-full p-3 rounded-lg bg-gray-50 focus:bg-white focus:ring-2 focus:ring-blue-500 transition-all duration-200 outline-none border border-gray-200 text-sm"
+                rows="3"
+              />
+            </div>
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              onClick={() => {setShowEditModal(false); setErrors({});}}
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-sm"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleEditGroup}
+              className="px-5 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            >
+              Update Group
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Group Details Modal */}
+      {showDetailsModal && selectedGroup && (
+        <Modal isOpen={showDetailsModal} onClose={() => setShowDetailsModal(false)} title="Group Details">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500 text-sm">Group Name:</span>
+                <p className="font-medium">{selectedGroup.group_name}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-sm">Module:</span>
+                <p className="font-medium">{selectedGroup.module_name}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-sm">Date:</span>
+                <p className="font-medium">{formatDate(selectedGroup.meeting_date)} {selectedGroup.meeting_time && `at ${selectedGroup.meeting_time}`}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-sm">Platform:</span>
+                <p className="font-medium">{selectedGroup.meeting_platform}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-sm">Members:</span>
+                <p className="font-medium">{selectedGroup.members?.length || 0}/{selectedGroup.num_members}</p>
+              </div>
+              <div>
+                <span className="text-gray-500 text-sm">Owner:</span>
+                <p className="font-medium">{selectedGroup.owner || "Unknown"}</p>
+              </div>
+            </div>
+            
+            {selectedGroup.about && (
+              <div>
+                <span className="text-gray-500 text-sm">Description:</span>
+                <p className="font-medium text-sm mt-1">{selectedGroup.about}</p>
+              </div>
+            )}
+            
+            <div>
+              <span className="text-gray-500 text-sm">Meeting Link:</span>
+              <a 
+                href={selectedGroup.meeting_link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="font-medium text-blue-600 hover:text-blue-800 text-sm block mt-1 break-all"
+              >
+                {selectedGroup.meeting_link}
+              </a>
+            </div>
+            
+            {selectedGroup.members && selectedGroup.members.length > 0 && (
+              <div>
+                <span className="text-gray-500 text-sm">Current Members:</span>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedGroup.members.map((member, index) => (
+                    <span key={index} className="inline-flex items-center px-3 py-1 rounded-full text-xs bg-gray-100 text-gray-800">
+                      {member}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex gap-3 justify-end mt-6">
+            <button
+              onClick={() => setShowDetailsModal(false)}
+              className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors border border-gray-200 text-sm"
+            >
+              Close
+            </button>
+            {selectedGroup.user_id === currentUser.id ? (
+              <>
+                <button
+                  onClick={() => {
+                    setEditGroup({...selectedGroup});
+                    setShowEditModal(true);
+                    setShowDetailsModal(false);
+                  }}
+                  className="px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-blue-200 text-sm"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDeleteGroup(selectedGroup.id)}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-red-200 text-sm"
+                >
+                  Delete
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => {
+                  toggleJoin(selectedGroup.id);
+                  setShowDetailsModal(false);
+                }}
+                className={`px-4 py-2 rounded-lg transition-colors border text-sm ${
+                  selectedGroup.members?.includes(currentUser.name)
+                    ? 'text-red-600 hover:bg-red-50 border-red-200'
+                    : 'text-green-600 hover:bg-green-50 border-green-200'
+                }`}
+              >
+                {selectedGroup.members?.includes(currentUser.name) ? 'Leave Group' : 'Join Group'}
+              </button>
+            )}
+          </div>
+        </Modal>
+      )}
     </div>
   );
 }
@@ -4400,6 +4477,8 @@ function StudyCirclePage() {
 // ----------- Main App -----------
 export default function App() {
   const [page, setPage] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate(); // Add this hook
 
   const renderPage = () => {
     switch (page) {
@@ -4420,10 +4499,52 @@ export default function App() {
     }
   };
 
+  const handleLogout = () => {
+    // Remove token from localStorage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    
+    // Remove token from sessionStorage (if used)
+    sessionStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    
+    // Clear any other user-related data
+    localStorage.removeItem('userData');
+    sessionStorage.removeItem('userData');
+    
+    // Optional: Clear all localStorage (be careful with this)
+    // localStorage.clear();
+    
+    console.log('User logged out successfully');
+    
+    // Redirect to homepage
+    navigate('/'); // or window.location.href = '/';
+    
+    // If you're not using React Router, you can use:
+    // window.location.href = '/';
+  };
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
-    <div className="flex">
-      <Sidebar page={page} setPage={setPage} onLogout={() => alert("Logged out")} />
-      <main className="ml-64 flex-1 p-6 bg-gray-50 min-h-screen">{renderPage()}</main>
+    <div className="flex min-h-screen bg-white">
+      <Sidebar 
+        page={page} 
+        setPage={setPage} 
+        onLogout={handleLogout}
+        isOpen={sidebarOpen}
+        onToggle={toggleSidebar}
+      />
+      <main className={`
+        flex-1 min-h-screen transition-all duration-300 overflow-auto bg-white
+        ${sidebarOpen ? 'lg:ml-64' : 'lg:ml-0'}
+      `}>
+        <div className="p-4 lg:p-6 bg-white">
+          {renderPage()}
+        </div>
+      </main>
     </div>
   );
 }

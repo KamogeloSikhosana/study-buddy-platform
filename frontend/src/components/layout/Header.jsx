@@ -6,9 +6,6 @@ import {
   faRightToBracket,
   faUserPlus,
   faArrowRightFromBracket,
-  faHouse,
-  faCircleInfo,
-  faEnvelope,
   faPager,
 } from "@fortawesome/free-solid-svg-icons";
 
@@ -72,24 +69,20 @@ export default function Header() {
               alt="Study Buddy"
               className="h-14 w-14 rounded-full ring-1 ring-muted/40"
             />
-            <span className="text-xl font-bold text-dark">StudyBuddy</span>
           </Link>
 
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-2">
             <NavItem to="/">
-              <FontAwesomeIcon icon={faHouse} className="h-4 w-4" />
               <span>Home</span>
             </NavItem>
             <NavItem to="/about">
-              <FontAwesomeIcon icon={faCircleInfo} className="h-4 w-4" />
               <span>About</span>
             </NavItem>
             <NavItem to="/faq">
               <span>FAQ</span>
             </NavItem>
-            <NavItem to="/contact">
-              <FontAwesomeIcon icon={faEnvelope} className="h-4 w-4" />
+             <NavItem to="/contact">
               <span>Contact</span>
             </NavItem>
 
@@ -172,7 +165,6 @@ export default function Header() {
               }
               onClick={() => setOpen(false)}
             >
-              <FontAwesomeIcon icon={faHouse} className="h-4 w-4" />
               <span>Home</span>
             </NavLink>
             
@@ -187,7 +179,6 @@ export default function Header() {
               }
               onClick={() => setOpen(false)}
             >
-              <FontAwesomeIcon icon={faCircleInfo} className="h-4 w-4" />
               <span>About</span>
             </NavLink>
             
@@ -203,21 +194,6 @@ export default function Header() {
               onClick={() => setOpen(false)}
             >
               <span>FAQ</span>
-            </NavLink>
-            
-            <NavLink 
-              to="/contact" 
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-3 rounded-lg transition-colors ${
-                  isActive 
-                    ? "bg-blue-50 text-blue-600 border border-blue-200" 
-                    : "text-dark hover:bg-gray-50"
-                }`
-              }
-              onClick={() => setOpen(false)}
-            >
-              <FontAwesomeIcon icon={faEnvelope} className="h-4 w-4" />
-              <span>Contact</span>
             </NavLink>
 
             {isAuthenticated && dashboardPath && (
