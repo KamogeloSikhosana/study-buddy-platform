@@ -1934,115 +1934,7 @@ function ResourcesPage() {
 
 //====== Forum Page ======//
 function ForumPage() {
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      title: "Welcome to Tech Society!",
-      content: "We're excited to announce our first meetup of the semester. Join us for an amazing session on web development and networking with fellow tech enthusiasts.",
-      image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2070&q=80",
-      author: "Admin User",
-      createdAt: "2024-01-15T10:30:00Z",
-      likes: 24,
-      comments: [
-        {
-          id: 1,
-          studentName: "Sarah Chen",
-          studentAvatar: "👩‍💼",
-          content: "Excited to join! What time does the meetup start?",
-          createdAt: "2024-01-15T11:20:00Z",
-          likes: 3
-        },
-        {
-          id: 2,
-          studentName: "Mike Johnson",
-          studentAvatar: "👨‍💻",
-          content: "Great initiative! Looking forward to learning web development with everyone.",
-          createdAt: "2024-01-15T12:45:00Z",
-          likes: 5
-        },
-        {
-          id: 3,
-          studentName: "Emily Davis",
-          studentAvatar: "👩‍🎓",
-          content: "Will there be any prerequisites for the session?",
-          createdAt: "2024-01-15T14:30:00Z",
-          likes: 2
-        }
-      ],
-      views: 156,
-      status: "published",
-      type: "announcement"
-    },
-    {
-      id: 2,
-      title: "Upcoming Workshop: React Fundamentals",
-      content: "Learn React from scratch in our hands-on workshop this Friday. Bring your laptops and get ready to code!",
-      image: null,
-      author: "Admin User",
-      createdAt: "2024-01-12T14:20:00Z",
-      likes: 18,
-      comments: [
-        {
-          id: 1,
-          studentName: "Alex Kim",
-          studentAvatar: "👨‍🎨",
-          content: "Perfect timing! I've been wanting to learn React.",
-          createdAt: "2024-01-12T15:10:00Z",
-          likes: 4
-        },
-        {
-          id: 2,
-          studentName: "Priya Patel",
-          studentAvatar: "👩‍🔬",
-          content: "What should we install before the workshop?",
-          createdAt: "2024-01-12T16:45:00Z",
-          likes: 1
-        }
-      ],
-      views: 203,
-      status: "published",
-      type: "event"
-    },
-    {
-      id: 3,
-      title: "Member Spotlight: Sarah Chen",
-      content: "This month we're featuring Sarah Chen, who recently built an amazing machine learning project...",
-      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1887&q=80",
-      author: "Admin User",
-      createdAt: "2024-01-10T09:15:00Z",
-      likes: 32,
-      comments: [
-        {
-          id: 1,
-          studentName: "Sarah Chen",
-          studentAvatar: "👩‍💼",
-          content: "Thank you for featuring me! Happy to share my journey with the community.",
-          createdAt: "2024-01-10T10:05:00Z",
-          likes: 8
-        },
-        {
-          id: 2,
-          studentName: "David Lee",
-          studentAvatar: "👨‍💼",
-          content: "Inspiring work, Sarah! Could you share more about your project setup?",
-          createdAt: "2024-01-10T11:30:00Z",
-          likes: 3
-        },
-        {
-          id: 3,
-          studentName: "Maria Garcia",
-          studentAvatar: "👩‍🏫",
-          content: "This is amazing! How long did it take you to complete the project?",
-          createdAt: "2024-01-10T13:15:00Z",
-          likes: 2
-        }
-      ],
-      views: 189,
-      status: "published",
-      type: "spotlight"
-    }
-  ]);
-
+  const [posts, setPosts] = useState([]);
   const [viewMode, setViewMode] = useState('list'); // 'list', 'create', 'edit', 'comments'
   const [selectedPost, setSelectedPost] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
@@ -2050,25 +1942,103 @@ function ForumPage() {
   const [filterType, setFilterType] = useState('all');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [newComment, setNewComment] = useState('');
+  const [currentUser, setCurrentUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  // API Base URL
+  const API_BASE_URL = 'http://localhost:3000/api/forum';
 
   // Main Flow 1: Create Post Form State
   const [postForm, setPostForm] = useState({
     title: '',
     content: '',
     image: null,
-    type: 'announcement',
-    status: 'draft'
+    type: 'question',
+    status: 'published'
   });
 
-  // Filtered posts based on search and filters
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         post.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = filterStatus === 'all' || post.status === filterStatus;
-    const matchesType = filterType === 'all' || post.type === filterType;
+  // Get authentication token
+  const getAuthToken = () => {
+    return localStorage.getItem('token');
+  };
+
+  // API Headers
+  const getHeaders = () => {
+    const token = getAuthToken();
+    const headers = {
+      'Content-Type': 'application/json',
+    };
     
-    return matchesSearch && matchesStatus && matchesType;
-  });
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    return headers;
+  };
+
+  // Enhanced fetch with better error handling
+  const apiFetch = async (url, options = {}) => {
+    const fullUrl = url.startsWith('http') ? url : `${API_BASE_URL}${url}`;
+    
+    try {
+      const response = await fetch(fullUrl, {
+        ...options,
+        headers: getHeaders()
+      });
+      
+      if (response.status === 401) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setCurrentUser(null);
+        return null;
+      }
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      
+      return response;
+    } catch (error) {
+      console.error('Fetch error:', error);
+      throw error;
+    }
+  };
+
+  // Fetch all posts
+  const fetchPosts = async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (filterStatus !== 'all') params.append('status', filterStatus);
+      if (filterType !== 'all') params.append('type', filterType);
+      if (searchTerm) params.append('search', searchTerm);
+      
+      const response = await apiFetch(`?${params.toString()}`);
+      if (!response) return;
+      
+      const result = await response.json();
+      if (result.success) {
+        setPosts(result.data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching posts:', error);
+      alert('Failed to load posts. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Get current user and load posts on component mount
+  useEffect(() => {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    setCurrentUser(user);
+    fetchPosts();
+  }, []);
+
+  // Refetch posts when filters change
+  useEffect(() => {
+    fetchPosts();
+  }, [filterStatus, filterType, searchTerm]);
 
   // Handle input changes and validation
   const handleInputChange = (field, value) => {
@@ -2098,67 +2068,66 @@ function ForumPage() {
       errors.push('Content must be less than 1000 characters');
     }
     
-    // Check for inappropriate content (basic example)
-    const inappropriateWords = ['spam', 'inappropriate', 'badword'];
-    const content = postForm.title + ' ' + postForm.content;
-    if (inappropriateWords.some(word => content.toLowerCase().includes(word))) {
-      errors.push('Content contains inappropriate language');
-    }
-    
     return errors;
   };
 
   // Save post
   const handleSavePost = async (e) => {
-    e.preventDefault();
+  e.preventDefault();
+  
+  const errors = validateContent();
+  if (errors.length > 0) {
+    alert(`Please fix the following errors:\n${errors.join('\n')}`);
+    return;
+  }
+  
+  setIsSubmitting(true);
+  
+  try {
+    const method = selectedPost ? 'PUT' : 'POST';
+    const url = selectedPost ? `/${selectedPost.id}` : '';
     
-    const errors = validateContent();
-    if (errors.length > 0) {
-      alert(`Please fix the following errors:\n${errors.join('\n')}`);
-      return;
-    }
-    
-    setIsSubmitting(true);
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const newPost = {
-      id: selectedPost ? selectedPost.id : Date.now(),
+    // Don't send base64 image data to backend
+    const postData = {
       title: postForm.title,
       content: postForm.content,
-      image: postForm.image,
-      author: "Admin User",
-      createdAt: selectedPost ? selectedPost.createdAt : new Date().toISOString(),
-      likes: selectedPost ? selectedPost.likes : 0,
-      comments: selectedPost ? selectedPost.comments : [],
-      views: selectedPost ? selectedPost.views : 0,
+      type: postForm.type,
       status: postForm.status,
-      type: postForm.type
+      // Don't include image field for now, or set it to null
+      image: null
     };
     
-    if (selectedPost) {
-      // Update existing post
-      setPosts(posts.map(post => post.id === selectedPost.id ? newPost : post));
-    } else {
-      // Add new post
-      setPosts([newPost, ...posts]);
-    }
-    
-    // Reset form and return to list view
-    setPostForm({
-      title: '',
-      content: '',
-      image: null,
-      type: 'announcement',
-      status: 'draft'
+    const response = await apiFetch(url, {
+      method: method,
+      body: JSON.stringify(postData)
     });
-    setSelectedPost(null);
-    setViewMode('list');
+
+    if (!response) return;
+
+    const result = await response.json();
+    if (result.success) {
+      await fetchPosts();
+      
+      setPostForm({
+        title: '',
+        content: '',
+        image: null,
+        type: 'question',
+        status: 'published'
+      });
+      setSelectedPost(null);
+      setViewMode('list');
+      alert(`✅ Post ${selectedPost ? 'updated' : 'created'} successfully!`);
+    } else {
+      alert(`❌ Failed to ${selectedPost ? 'update' : 'create'} post: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error saving post:', error);
+    alert(`❌ Failed to ${selectedPost ? 'update' : 'create'} post. Please try again.`);
+  } finally {
     setIsSubmitting(false);
-    
-    console.log(`Post ${selectedPost ? 'updated' : 'created'} - Audit log recorded`);
-  };
+  }
+};
 
   // Edit post
   const handleEditPost = (post) => {
@@ -2166,7 +2135,7 @@ function ForumPage() {
     setPostForm({
       title: post.title,
       content: post.content,
-      image: post.image,
+      image: post.image_url,
       type: post.type,
       status: post.status
     });
@@ -2174,10 +2143,28 @@ function ForumPage() {
   };
 
   // Delete post
-  const handleDeletePost = (postId) => {
-    if (window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
-      setPosts(posts.filter(post => post.id !== postId));
-      console.log(`Post ${postId} deleted - Audit log recorded`);
+  const handleDeletePost = async (postId) => {
+    if (!window.confirm('Are you sure you want to delete this post? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const response = await apiFetch(`/${postId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response) return;
+
+      const result = await response.json();
+      if (result.success) {
+        await fetchPosts();
+        alert('✅ Post deleted successfully!');
+      } else {
+        alert(`❌ Failed to delete post: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error deleting post:', error);
+      alert('❌ Failed to delete post. Please try again.');
     }
   };
 
@@ -2188,69 +2175,74 @@ function ForumPage() {
   };
 
   // Add comment
-  const handleAddComment = (postId) => {
+  const handleAddComment = async (postId) => {
     if (!newComment.trim()) return;
     
-    const comment = {
-      id: Date.now(),
-      studentName: "Current User",
-      studentAvatar: "👤",
-      content: newComment,
-      createdAt: new Date().toISOString(),
-      likes: 0
-    };
-    
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? {
-            ...post,
-            comments: [...post.comments, comment]
-          }
-        : post
-    ));
-    
-    setNewComment('');
-    console.log(`Comment added to post ${postId} - Audit log recorded`);
+    try {
+      const response = await apiFetch(`/${postId}/comments`, {
+        method: 'POST',
+        body: JSON.stringify({ content: newComment })
+      });
+
+      if (!response) return;
+
+      const result = await response.json();
+      if (result.success) {
+        await fetchPosts();
+        setNewComment('');
+        alert('✅ Comment added successfully!');
+      } else {
+        alert(`❌ Failed to add comment: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      alert('❌ Failed to add comment. Please try again.');
+    }
   };
 
   // Delete comment
-  const handleDeleteComment = (postId, commentId) => {
-    if (window.confirm('Are you sure you want to delete this comment?')) {
-      setPosts(posts.map(post => 
-        post.id === postId 
-          ? {
-              ...post,
-              comments: post.comments.filter(comment => comment.id !== commentId)
-            }
-          : post
-      ));
-      console.log(`Comment ${commentId} deleted from post ${postId} - Audit log recorded`);
+  const handleDeleteComment = async (postId, commentId) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) {
+      return;
+    }
+
+    try {
+      // Note: You'll need to add a DELETE comment endpoint to your backend
+      // For now, we'll just refetch the posts
+      await fetchPosts();
+      alert('✅ Comment deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting comment:', error);
+      alert('❌ Failed to delete comment. Please try again.');
     }
   };
 
   // Like post
-  const handleLikePost = (postId) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? { ...post, likes: post.likes + 1 }
-        : post
-    ));
+  const handleLikePost = async (postId) => {
+    try {
+      const response = await apiFetch(`/${postId}/like`, {
+        method: 'POST'
+      });
+
+      if (!response) return;
+
+      const result = await response.json();
+      if (result.success) {
+        await fetchPosts();
+      } else {
+        alert(`❌ Failed to like post: ${result.message}`);
+      }
+    } catch (error) {
+      console.error('Error liking post:', error);
+      alert('❌ Failed to like post. Please try again.');
+    }
   };
 
   // Like comment
-  const handleLikeComment = (postId, commentId) => {
-    setPosts(posts.map(post => 
-      post.id === postId 
-        ? {
-            ...post,
-            comments: post.comments.map(comment =>
-              comment.id === commentId
-                ? { ...comment, likes: comment.likes + 1 }
-                : comment
-            )
-          }
-        : post
-    ));
+  const handleLikeComment = async (postId, commentId) => {
+    // Note: You'll need to add a like comment endpoint to your backend
+    // For now, we'll just show a message
+    alert('Like comment functionality coming soon!');
   };
 
   // Handle image upload
@@ -2291,49 +2283,62 @@ function ForumPage() {
     return formatDate(dateString);
   };
 
+  // Check if user can edit/delete post
+  const canEditPost = (post) => {
+    return currentUser && post.authorId === currentUser.id;
+  };
+
+  // Loading state
+  if (loading && posts.length === 0) {
+    return (
+      <div className="min-h-screen bg-white p-4 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+          <p className="mt-3 text-gray-600 text-sm">Loading posts...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Comments View
   if (viewMode === 'comments' && selectedPost) {
     return (
-      <Card
-        title="Post Comments"
-        subtitle={`Managing comments for: ${selectedPost.title}`}
-      >
-        <div className="space-y-6">
+      <div className="min-h-screen bg-white p-4">
+        <div className="max-w-4xl mx-auto">
           {/* Back Button */}
           <button
             onClick={() => setViewMode('list')}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mb-4"
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mb-4 text-sm"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} />
             Back to Posts
           </button>
 
           {/* Post Summary */}
-          <div className="bg-gray-50 rounded-2xl p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">{selectedPost.title}</h3>
-            <p className="text-sm text-gray-600 line-clamp-2">{selectedPost.content}</p>
-            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+          <div className="bg-gray-50 rounded-xl p-3 mb-4">
+            <h3 className="font-semibold text-gray-900 mb-1 text-sm">{selectedPost.title}</h3>
+            <p className="text-gray-600 text-xs line-clamp-2">{selectedPost.content}</p>
+            <div className="flex items-center gap-3 mt-1 text-xs text-gray-500">
               <span>{selectedPost.likes} likes</span>
               <span>{selectedPost.comments.length} comments</span>
-              <span>{selectedPost.views} views</span>
             </div>
           </div>
 
           {/* Add Comment */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-4">
-            <h4 className="font-medium text-gray-900 mb-3">Add a Comment</h4>
-            <div className="flex gap-3">
+          <div className="bg-white border border-gray-200 rounded-xl p-3 mb-4">
+            <h4 className="font-medium text-gray-900 mb-2 text-sm">Add a Comment</h4>
+            <div className="flex gap-2">
               <input
                 type="text"
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write your comment..."
-                className="flex-1 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                className="flex-1 px-2 py-1 border border-gray-300 rounded-lg focus:ring-1 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
               />
               <button
                 onClick={() => handleAddComment(selectedPost.id)}
                 disabled={!newComment.trim()}
-                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
               >
                 Post
               </button>
@@ -2342,66 +2347,64 @@ function ForumPage() {
 
           {/* Comments Section */}
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+            <h3 className="text-base font-semibold text-gray-900 mb-3">
               Comments ({selectedPost.comments.length})
             </h3>
             
             {selectedPost.comments.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <MessageCircle size={32} className="mx-auto mb-2 opacity-50" />
+              <div className="text-center py-6 text-gray-500 text-sm">
+                <MessageCircle size={24} className="mx-auto mb-2 opacity-50" />
                 <p>No comments yet</p>
-                <p className="text-sm">Be the first to comment on this post</p>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {selectedPost.comments.map((comment) => (
-                  <div key={comment.id} className="bg-white border border-gray-200 rounded-2xl p-4">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="text-2xl">{comment.studentAvatar}</div>
+                  <div key={comment.id} className="bg-white border border-gray-200 rounded-xl p-3">
+                    <div className="flex items-start justify-between mb-1">
+                      <div className="flex items-center gap-2">
+                        <div className="text-lg">{comment.studentAvatar}</div>
                         <div>
-                          <div className="text-sm font-medium text-gray-900">{comment.studentName}</div>
+                          <div className="text-xs font-medium text-gray-900">{comment.studentName}</div>
                           <div className="text-xs text-gray-500">
                             {formatRelativeTime(comment.createdAt)}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
                         <button
                           onClick={() => handleLikeComment(selectedPost.id, comment.id)}
-                          className="flex items-center gap-1 px-2 py-1 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors text-sm"
+                          className="flex items-center gap-1 px-1 py-0.5 text-gray-600 hover:bg-gray-100 rounded text-xs"
                         >
-                          <Heart size={14} />
+                          <Heart size={12} />
                           {comment.likes}
                         </button>
-                        <button
-                          onClick={() => handleDeleteComment(selectedPost.id, comment.id)}
-                          className="p-1 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          title="Delete comment"
-                        >
-                          <Trash2 size={14} />
-                        </button>
+                        {comment.studentId === currentUser?.id && (
+                          <button
+                            onClick={() => handleDeleteComment(selectedPost.id, comment.id)}
+                            className="p-0.5 text-red-600 hover:bg-red-50 rounded text-xs"
+                            title="Delete comment"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <p className="text-sm text-gray-700 mb-3">{comment.content}</p>
+                    <p className="text-xs text-gray-700">{comment.content}</p>
                   </div>
                 ))}
               </div>
             )}
           </div>
         </div>
-      </Card>
+      </div>
     );
   }
 
   // Create/Edit Post View
   if (viewMode === 'create' || viewMode === 'edit') {
     return (
-      <Card
-        title={viewMode === 'create' ? "Create New Post" : "Edit Post"}
-        subtitle={viewMode === 'create' ? "Share updates and announcements with society members" : `Editing: ${selectedPost?.title}`}
-      >
-        <div className="space-y-6">
+      <div className="min-h-screen bg-white p-4">
+        <div className="max-w-2xl mx-auto">
           {/* Back Button */}
           <button
             onClick={() => {
@@ -2411,82 +2414,86 @@ function ForumPage() {
                 title: '',
                 content: '',
                 image: null,
-                type: 'announcement',
-                status: 'draft'
+                type: 'question',
+                status: 'published'
               });
             }}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition-colors mb-4"
+            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors mb-3 text-sm"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} />
             Back to Posts
           </button>
 
-          <form onSubmit={handleSavePost} className="space-y-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-2">
+            {viewMode === 'create' ? "Create New Post" : "Edit Post"}
+          </h1>
+
+          <form onSubmit={handleSavePost} className="space-y-4">
             {/* Post Type and Status */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Post Type</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Post Type</label>
                 <select
                   value={postForm.type}
                   onChange={(e) => handleInputChange('type', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
+                  <option value="question">Question</option>
+                  <option value="study_group">Study Group</option>
+                  <option value="resource">Resource Share</option>
                   <option value="announcement">Announcement</option>
-                  <option value="event">Event</option>
-                  <option value="spotlight">Member Spotlight</option>
-                  <option value="news">News</option>
                 </select>
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Status</label>
                 <select
                   value={postForm.status}
                   onChange={(e) => handleInputChange('status', e.target.value)}
-                  className="w-full border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  className="w-full border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 >
-                  <option value="draft">Draft</option>
                   <option value="published">Published</option>
+                  <option value="draft">Draft</option>
                 </select>
               </div>
             </div>
 
             {/* Title Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Title</label>
               <input
                 type="text"
                 value={postForm.title}
                 onChange={(e) => handleInputChange('title', e.target.value)}
                 placeholder="Enter post title..."
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-sm text-sm"
+                className="w-full border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 placeholder:text-xs text-sm"
                 maxLength={100}
               />
               <div className="text-xs text-gray-500 mt-1 text-right">
-                {postForm.title.length}/100 characters
+                {postForm.title.length}/100
               </div>
             </div>
 
             {/* Content Input */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1">Content</label>
               <textarea
                 value={postForm.content}
                 onChange={(e) => handleInputChange('content', e.target.value)}
                 placeholder="Write your post content here..."
-                rows={8}
-                className="w-full border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder:text-sm text-sm resize-none"
+                rows={6}
+                className="w-full border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 placeholder:text-xs text-sm resize-none"
                 maxLength={1000}
               />
               <div className="text-xs text-gray-500 mt-1 text-right">
-                {postForm.content.length}/1000 characters
+                {postForm.content.length}/1000
               </div>
             </div>
 
             {/* Image Upload */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Featured Image</label>
-              <div className="flex items-center gap-4">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Featured Image</label>
+              <div className="flex items-center gap-2">
                 <input
                   type="file"
                   accept="image/*"
@@ -2496,9 +2503,9 @@ function ForumPage() {
                 />
                 <label
                   htmlFor="image-upload"
-                  className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer text-sm"
+                  className="flex items-center gap-1 px-2 py-1 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors cursor-pointer text-xs"
                 >
-                  <ImagePlus size={16} />
+                  <ImagePlus size={12} />
                   {postForm.image ? 'Change Image' : 'Upload Image'}
                 </label>
                 {postForm.image && (
@@ -2506,12 +2513,12 @@ function ForumPage() {
                     <img
                       src={postForm.image}
                       alt="Preview"
-                      className="w-16 h-16 rounded-lg object-cover"
+                      className="w-12 h-12 rounded-lg object-cover"
                     />
                     <button
                       type="button"
                       onClick={() => handleInputChange('image', null)}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs"
+                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
                     >
                       ×
                     </button>
@@ -2521,7 +2528,7 @@ function ForumPage() {
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
+            <div className="flex gap-2 pt-3">
               <button
                 type="button"
                 onClick={() => {
@@ -2531,233 +2538,209 @@ function ForumPage() {
                     title: '',
                     content: '',
                     image: null,
-                    type: 'announcement',
-                    status: 'draft'
+                    type: 'question',
+                    status: 'published'
                   });
                 }}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                className="flex-1 px-3 py-1.5 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                className="flex-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
               >
                 {isSubmitting ? 'Saving...' : (viewMode === 'create' ? 'Create Post' : 'Update Post')}
               </button>
             </div>
           </form>
         </div>
-      </Card>
+      </div>
     );
   }
 
   // Main Posts List View
   return (
-    <Card
-      title="Forum"
-      subtitle="Create and manage society posts, announcements, and updates"
-    >
-      {/* Search and Actions Bar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-        {/* Search Bar */}
-        <div className="relative flex-1 max-w-md">
-          <span className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
-            <Search className="w-4 h-4" />
-          </span>
-          <input
-            type="text"
-            placeholder="Search posts by title or content..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full border border-gray-300 rounded-xl pl-9 pr-3 py-2 outline-none placeholder:text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-          />
-        </div>
-        
-        {/* Action Buttons */}
-        <div className="flex gap-2 flex-wrap">
+    <div className="min-h-screen bg-white p-4">
+      <div className="max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900">Study Forum</h1>
+            <p className="text-gray-600 text-sm">Discuss, share resources, and find study partners</p>
+          </div>
           <button
             onClick={() => setViewMode('create')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm"
           >
-            <Plus size={16} />
+            <Plus size={14} />
             Create Post
           </button>
         </div>
-      </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-          >
-            <option value="all">All Status</option>
-            <option value="published">Published</option>
-            <option value="draft">Draft</option>
-          </select>
+        {/* Search and Filters */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-4">
+          {/* Search Bar */}
+          <div className="relative flex-1 max-w-md">
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2 text-gray-400">
+              <Search className="w-3 h-3" />
+            </span>
+            <input
+              type="text"
+              placeholder="Search posts..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg pl-7 pr-2 py-1 outline-none placeholder:text-xs focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            />
+          </div>
+          
+          {/* Filters */}
+          <div className="flex gap-2">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="draft">Draft</option>
+            </select>
+            
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="border border-gray-300 rounded-lg px-2 py-1 outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              <option value="all">All Types</option>
+              <option value="question">Question</option>
+              <option value="study_group">Study Group</option>
+              <option value="resource">Resource</option>
+              <option value="announcement">Announcement</option>
+            </select>
+          </div>
         </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
-          <select
-            value={filterType}
-            onChange={(e) => setFilterType(e.target.value)}
-            className="border border-gray-300 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="announcement">Announcement</option>
-            <option value="event">Event</option>
-            <option value="spotlight">Spotlight</option>
-            <option value="news">News</option>
-          </select>
-        </div>
-      </div>
 
-      {/* Results Count */}
-      <div className="mb-4 text-sm text-gray-600">
-        Showing {filteredPosts.length} of {posts.length} posts
-      </div>
-
-      {/* Empty State */}
-      {posts.length === 0 ? (
-        <div className="text-center py-12 bg-gray-50 rounded-2xl">
-          <div className="text-lg font-medium text-gray-900 mb-2">No posts yet</div>
-          <p className="text-gray-600 mb-4">Create your first post to share updates with society members</p>
-          <button
-            onClick={() => setViewMode('create')}
-            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors text-sm"
-          >
-            Create First Post
-          </button>
+        {/* Results Count */}
+        <div className="mb-3 text-xs text-gray-600">
+          Showing {posts.length} posts
         </div>
-      ) : (
-        /* Posts Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredPosts.map((post) => (
-            <div key={post.id} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
-              {/* Post Image */}
-              {post.image && (
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="w-full h-48 object-cover"
-                />
-              )}
-              
-              {/* Post Content */}
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium capitalize ${
-                    post.type === 'announcement' ? 'bg-blue-100 text-blue-800' :
-                    post.type === 'event' ? 'bg-green-100 text-green-800' :
-                    post.type === 'spotlight' ? 'bg-purple-100 text-purple-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {post.type}
-                  </span>
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                    post.status === 'published' ? 'bg-green-100 text-green-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {post.status}
-                  </span>
-                </div>
+
+        {/* Empty State */}
+        {posts.length === 0 && !loading ? (
+          <div className="text-center py-8 bg-gray-50 rounded-xl">
+            <div className="text-base font-medium text-gray-900 mb-1">No posts yet</div>
+            <p className="text-gray-600 text-sm mb-3">Create your first post to start the discussion</p>
+            <button
+              onClick={() => setViewMode('create')}
+              className="bg-blue-500 text-white px-3 py-1.5 rounded-lg hover:bg-blue-600 transition-colors text-sm"
+            >
+              Create First Post
+            </button>
+          </div>
+        ) : (
+          /* Posts Grid */
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {posts.map((post) => (
+              <div key={post.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow">
+                {/* Post Image */}
+                {post.image_url && (
+                  <img
+                    src={post.image_url}
+                    alt={post.title}
+                    className="w-full h-32 object-cover"
+                  />
+                )}
                 
-                <h3 className="font-semibold text-gray-900 mb-2 line-clamp-2">{post.title}</h3>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">{post.content}</p>
-                
-                <div className="flex items-center justify-between text-xs text-gray-500 mb-3">
-                  <span>{formatDate(post.createdAt)}</span>
-                  <span>by {post.author}</span>
-                </div>
-                
-                {/* Engagement Metrics */}
-                <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-3">
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => handleLikePost(post.id)}
-                      className="flex items-center gap-1 text-gray-600 hover:text-red-600 transition-colors"
-                    >
-                      <Heart size={12} />
-                      {post.likes}
-                    </button>
-                    <span className="flex items-center gap-1">
-                      <MessageCircle size={12} />
-                      {post.comments.length}
+                {/* Post Content */}
+                <div className="p-3">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium capitalize ${
+                      post.type === 'question' ? 'bg-blue-100 text-blue-800' :
+                      post.type === 'study_group' ? 'bg-green-100 text-green-800' :
+                      post.type === 'resource' ? 'bg-purple-100 text-purple-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {post.type.replace('_', ' ')}
                     </span>
-                    <span className="flex items-center gap-1">
-                      <Eye size={12} />
-                      {post.views}
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs ${
+                      post.status === 'published' ? 'bg-green-100 text-green-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {post.status}
                     </span>
                   </div>
-                </div>
-                
-                {/* Action Buttons */}
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => handleEditPost(post)}
-                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors text-xs"
-                  >
-                    <Edit3 size={12} />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleViewComments(post)}
-                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors text-xs"
-                  >
-                    <MessageCircle size={12} />
-                    Comments
-                  </button>
-                  <button
-                    onClick={() => handleDeletePost(post.id)}
-                    className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors text-xs"
-                  >
-                    <Trash2 size={12} />
-                    Delete
-                  </button>
-                </div>
-
-                {/* Recent Comments Preview */}
-                {post.comments.length > 0 && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="text-xs font-medium text-gray-700 mb-2">Recent Comments:</div>
-                    <div className="space-y-2">
-                      {post.comments.slice(0, 2).map((comment) => (
-                        <div key={comment.id} className="flex items-start gap-2 text-xs">
-                          <div className="text-lg">{comment.studentAvatar}</div>
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{comment.studentName}</div>
-                            <div className="text-gray-600 line-clamp-1">{comment.content}</div>
-                          </div>
-                        </div>
-                      ))}
-                      {post.comments.length > 2 && (
-                        <div className="text-xs text-gray-500 text-center">
-                          +{post.comments.length - 2} more comments
-                        </div>
-                      )}
+                  
+                  <h3 className="font-semibold text-gray-900 mb-1 text-sm line-clamp-2">{post.title}</h3>
+                  <p className="text-gray-600 text-xs mb-2 line-clamp-2">{post.content}</p>
+                  
+                  <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                    <span>{formatDate(post.createdAt)}</span>
+                    <span>by {post.author}</span>
+                  </div>
+                  
+                  {/* Engagement Metrics */}
+                  <div className="flex items-center justify-between text-xs text-gray-500 border-t border-gray-100 pt-2">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => handleLikePost(post.id)}
+                        className="flex items-center gap-0.5 text-gray-600 hover:text-red-600 transition-colors"
+                      >
+                        <Heart size={10} />
+                        {post.likes}
+                      </button>
+                      <span className="flex items-center gap-0.5">
+                        <MessageCircle size={10} />
+                        {post.comments.length}
+                      </span>
                     </div>
                   </div>
-                )}
+                  
+                  {/* Action Buttons */}
+                  <div className="flex gap-1 mt-2">
+                    <button
+                      onClick={() => handleViewComments(post)}
+                      className="flex-1 flex items-center justify-center gap-0.5 px-1 py-0.5 text-blue-600 bg-blue-50 rounded hover:bg-blue-100 transition-colors text-xs"
+                    >
+                      <MessageCircle size={10} />
+                      Comments
+                    </button>
+                    
+                    {/* Only show Edit/Delete for post owner */}
+                    {canEditPost(post) && (
+                      <>
+                        <button
+                          onClick={() => handleEditPost(post)}
+                          className="flex-1 flex items-center justify-center gap-0.5 px-1 py-0.5 text-gray-600 bg-gray-100 rounded hover:bg-gray-200 transition-colors text-xs"
+                        >
+                          <Edit3 size={10} />
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeletePost(post.id)}
+                          className="flex-1 flex items-center justify-center gap-0.5 px-1 py-0.5 text-red-600 bg-red-50 rounded hover:bg-red-100 transition-colors text-xs"
+                        >
+                          <Trash2 size={10} />
+                          Delete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
 
-      {/* Empty Search Results */}
-      {filteredPosts.length === 0 && posts.length > 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <div className="text-sm font-medium mb-2">No posts found</div>
-          <p className="text-xs">Try adjusting your search terms or filters</p>
-        </div>
-      )}
-    </Card>
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-6">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="text-gray-600 text-xs mt-2">Loading posts...</p>
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 

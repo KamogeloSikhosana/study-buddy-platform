@@ -35,6 +35,9 @@ console.log('✅ Study groups routes imported');
 import taskRoutes from "./routes/tasks.js";
 console.log('✅ Task routes imported');
 
+import forumRoutes from "./routes/forum.js"; // Add this line
+console.log('✅ Forum routes imported');
+
 console.log('🎯 All imports successful!');
 
 const app = express();
@@ -98,6 +101,7 @@ app.use("/api/study-sessions", studySessionsRouter);
 app.use("/api/study-groups", studyGroupsRouter);
 app.use("/api/resources", resourceRoutes);
 app.use("/api/tasks", taskRoutes);
+app.use("/api/forum", forumRoutes); // Add this line
 
 // Simple 404 handler for all unmatched routes
 app.use((req, res) => {
